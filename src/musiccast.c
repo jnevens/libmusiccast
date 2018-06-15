@@ -12,11 +12,8 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include <musiccast.h>
-
-struct musiccast_conn_s {
-	struct in_addr	ip;
-};
+#include <musiccast_priv.h>
+#include <request.h>
 
 struct in_addr hostname_to_ip(const char * hostname)
 {
@@ -53,7 +50,7 @@ musiccast_conn_t * musiccast_init(const char *hostname)
 		exit(1);
 	}
 
-	printf("hostname %s resolved: %s\n", hostname, inet_ntoa(mcc->ip));
+	// printf("hostname %s resolved: %s\n", hostname, inet_ntoa(mcc->ip));
 
 	return mcc;
 }
@@ -61,4 +58,74 @@ musiccast_conn_t * musiccast_init(const char *hostname)
 void musiccast_destroy(musiccast_conn_t *mcc)
 {
 	free(mcc);
+}
+
+bool musiccast_system_device_info(musiccast_conn_t *mc)
+{
+	bool rv;
+	char *response = NULL;
+	rv = musiccast_request(mc, "/YamahaExtendedControl/v1/system/getDeviceInfo", &response);
+	printf("%s\n", response);
+	free(response);
+	return rv;
+}
+
+bool musiccast_system_features(musiccast_conn_t *mc)
+{
+	bool rv;
+	char *response = NULL;
+	rv = musiccast_request(mc, "/YamahaExtendedControl/v1/system/getFeatures", &response);
+	printf("%s\n", response);
+	free(response);
+	return rv;
+}
+
+bool musiccast_system_network_status(musiccast_conn_t *mc)
+{
+	bool rv;
+	char *response = NULL;
+	rv = musiccast_request(mc, "/YamahaExtendedControl/v1/system/getNetworkStatus", &response);
+	printf("%s\n", response);
+	free(response);
+	return rv;
+}
+
+bool musiccast_system_func_status(musiccast_conn_t *mc)
+{
+	bool rv;
+	char *response = NULL;
+	rv = musiccast_request(mc, "/YamahaExtendedControl/v1/system/getFuncStatus", &response);
+	printf("%s\n", response);
+	free(response);
+	return rv;
+}
+
+bool musiccast_system_location_info(musiccast_conn_t *mc)
+{
+	bool rv;
+	char *response = NULL;
+	rv = musiccast_request(mc, "/YamahaExtendedControl/v1/system/getLocationInfo", &response);
+	printf("%s\n", response);
+	free(response);
+	return rv;
+}
+
+bool musiccast_system_status(musiccast_conn_t *mc)
+{
+	bool rv;
+	char *response = NULL;
+	rv = musiccast_request(mc, "/YamahaExtendedControl/v1/system/getStatus", &response);
+	printf("%s\n", response);
+	free(response);
+	return rv;
+}
+
+bool musiccast_system_sound_program_list(musiccast_conn_t *mc)
+{
+	bool rv;
+	char *response = NULL;
+	rv = musiccast_request(mc, "/YamahaExtendedControl/v1/system/getSoundProgramList", &response);
+	printf("%s\n", response);
+	free(response);
+	return rv;
 }
