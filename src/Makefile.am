@@ -7,5 +7,6 @@ libmusiccast_la_LIBADD =
 libmusiccast_la_LDFLAGS = -lcurl -ljson-c
 
 libmusiccast_la_SOURCES = \
+	discover.c \
 	musiccast.c \
 	request.c

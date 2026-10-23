@@ -9,8 +9,20 @@
 #define INCLUDE_MUSICCAST_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef struct musiccast_conn_s musiccast_conn_t;
+
+typedef struct musiccast_discovered_device_s {
+	char *address;
+	char *model_name;
+	char *device_id;
+} musiccast_discovered_device_t;
+
+typedef struct musiccast_discover_list_s {
+	musiccast_discovered_device_t *devices;
+	size_t count;
+} musiccast_discover_list_t;
 
 typedef enum {
 	MC_POWER_STATE_ON,
@@ -26,6 +38,10 @@ typedef enum {
 
 musiccast_conn_t * musiccast_init(const char *hostname);
 void musiccast_destroy(musiccast_conn_t *mcc);
+
+/* LAN discovery (SSDP); timeout_ms 0 uses a default of 3 seconds */
+musiccast_discover_list_t *musiccast_discover(unsigned int timeout_ms);
+void musiccast_discover_list_free(musiccast_discover_list_t *list);
 
 /* retrieve system info */
 char *musiccast_system_device_info(musiccast_conn_t *mc);

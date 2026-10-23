@@ -69,6 +69,42 @@ bool musiccast_request(musiccast_conn_t *mcc, const char *url, char **response)
 
 	rv = true;
 cleanup:
+	free(url_full);
+	curl_easy_cleanup(curl);
+	return rv;
+}
+
+bool musiccast_request_host(const char *host, const char *url, char **response)
+{
+	CURL *curl;
+	CURLcode res;
+	bool rv = false;
+	char *url_full = NULL;
+	musiccast_request_download_arg download_arg = {
+		.response = response,
+		.len = 0,
+	};
+
+	curl = curl_easy_init();
+	if (!curl)
+		return false;
+
+	if (asprintf(&url_full, "http://%s%s%s", host, ((url[0] == '/') ? "" : "/"), url) < 0)
+		goto cleanup;
+
+	curl_easy_setopt(curl, CURLOPT_URL, url_full);
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 1500L);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 3000L);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download_arg);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, musiccast_request_download_cb);
+	res = curl_easy_perform(curl);
+	if (res != CURLE_OK)
+		goto cleanup;
+
+	rv = true;
+cleanup:
+	free(url_full);
 	curl_easy_cleanup(curl);
 	return rv;
 }

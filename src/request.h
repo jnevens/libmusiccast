@@ -9,5 +9,6 @@
 #define SRC_REQUEST_H_
 
 bool musiccast_request(musiccast_conn_t *mcc, const char *url, char **response);
+bool musiccast_request_host(const char *host, const char *url, char **response);
 
 #endif /* SRC_REQUEST_H_ */

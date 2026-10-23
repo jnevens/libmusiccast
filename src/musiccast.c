@@ -94,13 +94,13 @@ musiccast_conn_t * musiccast_init(const char *hostname)
 		const char *zone_name = mcc->device.zone[i].id;
 		char *zone_state = musiccast_zone_status(mcc, zone_name);
 		if (!zone_state) {
-			fprintf(stderr, "Failed to request zone status (%s)\n");
+			fprintf(stderr, "Failed to request zone status (%s)\n", zone_name);
 			musiccast_destroy(mcc);
 			return NULL;
 		}
 
 		if (!musiccast_zone_status_parse(mcc, i, zone_state)) {
-			fprintf(stderr, "Failed to parse zone status");
+			fprintf(stderr, "Failed to parse zone status (%s)\n", zone_name);
 			musiccast_destroy(mcc);
 			return NULL;
 		}

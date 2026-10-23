@@ -7,10 +7,10 @@
 #include <musiccast.h>
 
 /* Program documentation. */
-static char doc[] = "HOSTNAME COMMAND";
+static char doc[] = "mcctl detect | mcctl HOSTNAME [options]";
 
 /* A description of the arguments we accept. */
-static char args_doc[] = "HOSTNAME";
+static char args_doc[] = "detect | HOSTNAME";
 
 /* The options we understand. */
 static struct argp_option options[] = {
@@ -31,6 +31,7 @@ static struct argp_option options[] = {
 		{ "volume", -10, "val", 0, "Set zone value (50/up/down) (step with --step)" },
 		{ "step", -11, "step", 0, "Set volume step (default = 1)" },
 		{ "zone", 'z', "zone", 0, "Select zone" },
+		{ "timeout", 't', "SECONDS", 0, "Discovery wait time (with detect)" },
 		{ 0 }
 };
 
@@ -40,6 +41,8 @@ struct arguments_s {
 	char *command;
 	bool silent;
 	bool verbose;
+	bool detect;
+	unsigned int detect_timeout_sec;
 	bool device_info;
 	bool features;
 	bool network_status;
@@ -61,6 +64,7 @@ struct arguments_s arguments = {
 		.silent = 0,
 		.verbose = 0,
 		.hostname = NULL,
+		.detect_timeout_sec = 3,
 };
 
 /* Parse a single option. */
@@ -80,6 +84,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		break;
 	case 'z':
 		arguments->zone = arg;
+		break;
+	case 't':
+		arguments->detect_timeout_sec = (unsigned int)atoi(arg);
+		if (arguments->detect_timeout_sec == 0)
+			arguments->detect_timeout_sec = 3;
 		break;
 	case -1:
 		arguments->device_info = 1;
@@ -121,16 +130,20 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		break;
 	case ARGP_KEY_ARG:
 		if (state->arg_num >= 2)
-			/* Too many arguments. */
 			argp_usage(state);
-		if (state->arg_num == 0)
-			arguments->hostname = arg;
-		if (state->arg_num == 1)
+		if (state->arg_num == 0) {
+			if (strcmp(arg, "detect") == 0)
+				arguments->detect = 1;
+			else
+				arguments->hostname = arg;
+		} else if (state->arg_num == 1) {
 			arguments->command = arg;
+		}
 		break;
 	case ARGP_KEY_END:
 		if (state->arg_num < 1)
-			/* Not enough arguments. */
+			argp_usage(state);
+		if (!arguments->detect && !arguments->hostname)
 			argp_usage(state);
 		break;
 	default:
@@ -147,6 +160,35 @@ int main(int argc, char *argv[])
 	/* Parse our arguments; every option seen by parse_opt will
 	 be reflected in arguments. */
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+
+	if (arguments.detect) {
+		musiccast_discover_list_t *found;
+		unsigned int timeout_ms = arguments.detect_timeout_sec * 1000;
+
+		found = musiccast_discover(timeout_ms);
+		if (!found) {
+			fprintf(stderr, "Discovery failed.\n");
+			return 1;
+		}
+		if (!arguments.silent) {
+			for (size_t i = 0; i < found->count; i++) {
+				const musiccast_discovered_device_t *d = &found->devices[i];
+
+				if (arguments.verbose) {
+					printf("%s\t%s\t%s\n",
+					       d->address,
+					       d->model_name ? d->model_name : "",
+					       d->device_id ? d->device_id : "");
+				} else {
+					printf("%s\t%s\n",
+					       d->address,
+					       d->model_name ? d->model_name : "");
+				}
+			}
+		}
+		musiccast_discover_list_free(found);
+		return 0;
+	}
 
 	musiccast_conn_t *mcc = musiccast_init(arguments.hostname);
 	if (mcc == NULL) {
