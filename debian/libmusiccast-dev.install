@@ -1,0 +1,5 @@
+usr/include/*
+usr/lib/*/libmusiccast.so
+usr/lib/*/libmusiccast.la
+usr/lib/*/libmusiccast.a
+usr/lib/*/pkgconfig/*

@@ -6,3 +6,6 @@ sbin_PROGRAMS = mcctl
 mcctl_SOURCES = \
 	mcctl.c
 
+# Regenerate mcctl when configure.ac version changes (include/version.h).
+mcctl.o: $(top_builddir)/include/version.h
+

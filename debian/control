@@ -1,0 +1,41 @@
+Source: libmusiccast
+Section: libs
+Priority: optional
+Maintainer: Jasper Nevens <jasper.nevens@linux.com>
+Build-Depends: debhelper-compat (= 13),
+               autoconf,
+               automake,
+               libtool,
+               pkg-config,
+               libcurl4-openssl-dev | libcurl4-gnutls-dev,
+               libjson-c-dev
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://github.com/jnevens/libmusiccast
+Vcs-Git: https://github.com/jnevens/libmusiccast.git
+Vcs-Browser: https://github.com/jnevens/libmusiccast
+
+Package: libmusiccast0
+Architecture: any
+Multi-Arch: same
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Yamaha MusicCast device control library
+ Shared library for discovering and controlling Yamaha MusicCast
+ speakers and receivers over the local network (YXC HTTP API).
+
+Package: libmusiccast-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: libmusiccast0 (= ${binary:Version}), ${misc:Depends}
+Description: development files for libmusiccast
+ Headers and pkg-config file for libmusiccast.
+
+Package: libmusiccast-tools
+Architecture: any
+Depends: libmusiccast0 (= ${binary:Version}),
+         ${misc:Depends},
+         ${shlibs:Depends}
+Description: command-line tool for Yamaha MusicCast devices
+ mcctl discovers devices on the LAN and queries or controls zones
+ (power, volume, mute, Net/USB presets, and related YXC endpoints).

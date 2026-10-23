@@ -8,6 +8,7 @@
 #ifndef INCLUDE_MUSICCAST_H_
 #define INCLUDE_MUSICCAST_H_
 
+#include "version.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -66,6 +67,9 @@ typedef struct musiccast_zone_list_s {
 	musiccast_zone_entry_t *zones;
 	size_t count;
 } musiccast_zone_list_t;
+
+/* Release version string (same as mcctl --version and libmusiccast.pc). */
+const char *musiccast_version(void);
 
 musiccast_conn_t *musiccast_connect(const char *hostname);
 musiccast_conn_t * musiccast_init(const char *hostname);

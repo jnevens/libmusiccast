@@ -51,6 +51,7 @@ m4/*
 missing
 stamp-h1
 libmusiccast.pc
+include/version.h
 
 # eclipse
 .cproject
@@ -61,6 +62,23 @@ tests/*.log
 test-driver
 tests/*.trs
 tests/check_*
+
+# Debian package build (dpkg-buildpackage writes to parent directory)
+../*.deb
+../*.ddeb
+../*.changes
+../*.buildinfo
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/files
+debian/*.substvars
+debian/*.debhelper.log
+debian/autoreconf.before
+debian/autoreconf.after
+debian/libmusiccast0/
+debian/libmusiccast-dev/
+debian/libmusiccast-tools/
+debian/tmp/
 
 #coverage
 coverage.info

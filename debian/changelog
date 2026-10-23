@@ -1,0 +1,5 @@
+libmusiccast (1.0.0~devel-1) unstable; urgency=medium
+
+  * Initial Debian packaging.
+
+ -- Jasper Nevens <jasper.nevens@linux.com>  Fri, 23 Oct 2026 22:30:00 +0200

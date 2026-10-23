@@ -1,7 +1,7 @@
-# Versioning.
-m4_define([dc_version_major],[0])
+# Release version (also bump debian/changelog upstream on release).
+m4_define([dc_version_major],[1])
 m4_define([dc_version_minor],[0])
-m4_define([dc_version_micro],[1])
+m4_define([dc_version_micro],[0])
 m4_define([dc_version_suffix],[devel])
 m4_define([dc_version],dc_version_major.dc_version_minor.dc_version_micro[]m4_ifset([dc_version_suffix],-[dc_version_suffix])) 
 # Libtool versioning.
@@ -66,11 +66,12 @@ AC_SUBST([DC_VERSION_LIBTOOL],[dc_version_lt_current:dc_version_lt_revision:dc_v
 
 # Version suffix.
 m4_ifset([dc_version_suffix],[
-        AC_DEFINE(HAVE_VERSION_SUFFIX, [1], [Define if a version suffix is p    resent.])
+        AC_DEFINE(HAVE_VERSION_SUFFIX, [1], [Define if a version suffix is present.])
 ])
 
 AC_CONFIG_FILES([
 	libmusiccast.pc
+	include/version.h
 	Makefile
 	include/Makefile
 	src/Makefile

@@ -5,6 +5,7 @@
 
 stages:
   - test
+  - build
 
 variables:
   # Required when --enable-gcov is used (see m4/gcov.m4).
@@ -52,3 +53,24 @@ build-test-coverage:
       coverage_report:
         coverage_format: cobertura
         path: coverage/cobertura.xml
+
+# Binary packages (library, -dev, mcctl).
+build-deb:
+  extends: .test_image
+  stage: build
+  variables:
+    APT_PACKAGES: >-
+      autoconf automake libtool pkg-config
+      build-essential
+      libcurl4-openssl-dev libjson-c-dev
+      debhelper devscripts fakeroot
+  script:
+    - dpkg-buildpackage -b -us -uc
+    - mkdir -p "${CI_PROJECT_DIR}/deb"
+    - mv ../libmusiccast0_*.deb ../libmusiccast-dev_*.deb ../libmusiccast-tools_*.deb "${CI_PROJECT_DIR}/deb/"
+  artifacts:
+    when: always
+    expire_in: 30 days
+    expose_as: "debian packages"
+    paths:
+      - deb/

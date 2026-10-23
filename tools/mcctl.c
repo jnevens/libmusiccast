@@ -6,6 +6,8 @@
 
 #include <musiccast.h>
 
+const char *argp_program_version = MUSICCAST_VERSION;
+
 static char doc[] =
 	"mcctl detect [options]\n"
 	"mcctl -a HOST COMMAND [options]\n"

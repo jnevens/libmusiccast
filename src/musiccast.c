@@ -124,6 +124,11 @@ musiccast_conn_t * musiccast_init(const char *hostname)
 	return mcc;
 }
 
+const char *musiccast_version(void)
+{
+	return MUSICCAST_VERSION;
+}
+
 void musiccast_destroy(musiccast_conn_t *mcc)
 {
 	for(int i = 0; i < MUSICCAST_MAX_ZONES; i++) {
