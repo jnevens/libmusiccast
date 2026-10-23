@@ -67,6 +67,63 @@ struct arguments_s arguments = {
 		.detect_timeout_sec = 3,
 };
 
+static size_t detect_field_len(const char *s)
+{
+	return s ? strlen(s) : 0;
+}
+
+static void detect_update_width(size_t *width, const char *value)
+{
+	size_t len = detect_field_len(value);
+
+	if (len > *width)
+		*width = len;
+}
+
+static void detect_print_results(const musiccast_discover_list_t *found, bool verbose)
+{
+	size_t w_addr = strlen("ADDRESS");
+	size_t w_host = strlen("NAME");
+	size_t w_model = strlen("MODEL");
+	size_t w_id = strlen("DEVICE_ID");
+
+	for (size_t i = 0; i < found->count; i++) {
+		const musiccast_discovered_device_t *d = &found->devices[i];
+
+		detect_update_width(&w_addr, d->address);
+		detect_update_width(&w_host, d->hostname);
+		detect_update_width(&w_model, d->model_name);
+		detect_update_width(&w_id, d->device_id);
+	}
+
+	if (w_addr < 15)
+		w_addr = 15;
+
+	printf("%-*s  %-*s  %-*s",
+	       (int)w_addr, "ADDRESS",
+	       (int)w_host, "NAME",
+	       (int)w_model, "MODEL");
+	if (verbose)
+		printf("  %-*s", (int)w_id, "DEVICE_ID");
+	printf("\n");
+
+	for (size_t i = 0; i < found->count; i++) {
+		const musiccast_discovered_device_t *d = &found->devices[i];
+		const char *addr = d->address ? d->address : "";
+		const char *host = d->hostname ? d->hostname : "";
+		const char *model = d->model_name ? d->model_name : "";
+		const char *id = d->device_id ? d->device_id : "";
+
+		printf("%-*s  %-*s  %-*s",
+		       (int)w_addr, addr,
+		       (int)w_host, host,
+		       (int)w_model, model);
+		if (verbose)
+			printf("  %-*s", (int)w_id, id);
+		printf("\n");
+	}
+}
+
 /* Parse a single option. */
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
 {
@@ -170,22 +227,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Discovery failed.\n");
 			return 1;
 		}
-		if (!arguments.silent) {
-			for (size_t i = 0; i < found->count; i++) {
-				const musiccast_discovered_device_t *d = &found->devices[i];
-
-				if (arguments.verbose) {
-					printf("%s\t%s\t%s\n",
-					       d->address,
-					       d->model_name ? d->model_name : "",
-					       d->device_id ? d->device_id : "");
-				} else {
-					printf("%s\t%s\n",
-					       d->address,
-					       d->model_name ? d->model_name : "");
-				}
-			}
-		}
+		if (!arguments.silent)
+			detect_print_results(found, arguments.verbose);
 		musiccast_discover_list_free(found);
 		return 0;
 	}

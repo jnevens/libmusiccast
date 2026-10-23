@@ -5,6 +5,7 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -171,15 +172,40 @@ static void ssdp_collect_candidates(int sock, unsigned int timeout_ms,
 	}
 }
 
-static bool musiccast_probe_host(const char *host, char **model_name, char **device_id)
+static char *json_strdup_string_field(json_object *jobj, const char *key)
+{
+	json_object *field = json_object_object_get(jobj, key);
+
+	if (!field || !json_object_is_type(field, json_type_string))
+		return NULL;
+	return strdup(json_object_get_string(field));
+}
+
+static char *address_reverse_hostname(const char *address)
+{
+	struct sockaddr_in sa = { .sin_family = AF_INET };
+	char host[NI_MAXHOST];
+
+	if (inet_pton(AF_INET, address, &sa.sin_addr) != 1)
+		return NULL;
+	if (getnameinfo((struct sockaddr *)&sa, sizeof(sa), host, sizeof(host),
+			NULL, 0, 0) != 0)
+		return NULL;
+	if (strcmp(host, address) == 0)
+		return NULL;
+	return strdup(host);
+}
+
+static bool musiccast_probe_host(const char *host, char **model_name, char **device_id,
+				 char **hostname)
 {
 	char *response = NULL;
 	json_object *jobj;
 	json_object *jmodel;
-	json_object *jdevice_id;
 
 	*model_name = NULL;
 	*device_id = NULL;
+	*hostname = NULL;
 
 	if (!musiccast_request_host(host,
 				    "/YamahaExtendedControl/v1/system/getDeviceInfo",
@@ -198,11 +224,24 @@ static bool musiccast_probe_host(const char *host, char **model_name, char **dev
 	}
 
 	*model_name = strdup(json_object_get_string(jmodel));
-	jdevice_id = json_object_object_get(jobj, "device_id");
-	if (jdevice_id && json_object_is_type(jdevice_id, json_type_string))
-		*device_id = strdup(json_object_get_string(jdevice_id));
-
+	*device_id = json_strdup_string_field(jobj, "device_id");
 	json_object_put(jobj);
+
+	response = NULL;
+	if (musiccast_request_host(host,
+				   "/YamahaExtendedControl/v1/system/getNetworkStatus",
+				   &response)) {
+		jobj = json_tokener_parse(response);
+		free(response);
+		if (jobj) {
+			*hostname = json_strdup_string_field(jobj, "network_name");
+			json_object_put(jobj);
+		}
+	}
+
+	if (!*hostname)
+		*hostname = address_reverse_hostname(host);
+
 	return *model_name != NULL;
 }
 
@@ -240,9 +279,10 @@ musiccast_discover_list_t *musiccast_discover(unsigned int timeout_ms)
 	for (size_t i = 0; i < candidate_count; i++) {
 		char *model_name = NULL;
 		char *device_id = NULL;
+		char *hostname = NULL;
 		musiccast_discovered_device_t *dev;
 
-		if (!musiccast_probe_host(candidates[i], &model_name, &device_id))
+		if (!musiccast_probe_host(candidates[i], &model_name, &device_id, &hostname))
 			continue;
 
 		list->devices = realloc(list->devices,
@@ -250,16 +290,19 @@ musiccast_discover_list_t *musiccast_discover(unsigned int timeout_ms)
 		if (!list->devices) {
 			free(model_name);
 			free(device_id);
+			free(hostname);
 			goto fail;
 		}
 
 		dev = &list->devices[list->count++];
 		dev->address = strdup(candidates[i]);
+		dev->hostname = hostname;
 		dev->model_name = model_name;
 		dev->device_id = device_id;
 		if (!dev->address) {
 			free(model_name);
 			free(device_id);
+			free(hostname);
 			goto fail;
 		}
 	}
@@ -281,6 +324,7 @@ void musiccast_discover_list_free(musiccast_discover_list_t *list)
 
 	for (size_t i = 0; i < list->count; i++) {
 		free(list->devices[i].address);
+		free(list->devices[i].hostname);
 		free(list->devices[i].model_name);
 		free(list->devices[i].device_id);
 	}

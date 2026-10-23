@@ -15,6 +15,7 @@ typedef struct musiccast_conn_s musiccast_conn_t;
 
 typedef struct musiccast_discovered_device_s {
 	char *address;
+	char *hostname;
 	char *model_name;
 	char *device_id;
 } musiccast_discovered_device_t;
