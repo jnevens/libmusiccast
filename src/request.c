@@ -55,8 +55,9 @@ bool musiccast_request(musiccast_conn_t *mcc, const char *url, char **response)
 	asprintf(&url_full, "http://%s%s%s", inet_ntoa(mcc->ip), ((url[0] == '/') ? "" : "/"), url);
 
 	curl_easy_setopt(curl, CURLOPT_URL, url_full);
-	// curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "name=val&foo=bar");
-	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 1500L);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 3000L);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download_arg);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, musiccast_request_download_cb);
 	/* Perform the request, res will get the return code */

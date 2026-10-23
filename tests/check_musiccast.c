@@ -1,26 +1,62 @@
 #include <check.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <unistd.h>
 
 #include <musiccast.h>
 
-START_TEST(test_musiccast_create_destroy)
+START_TEST(test_discover_list_free_null)
 {
-}END_TEST
+	musiccast_discover_list_free(NULL);
+}
+END_TEST
 
-Suite * libmusiccast_suite(void)
+START_TEST(test_discover_short_timeout)
+{
+	musiccast_discover_list_t *found;
+
+	found = musiccast_discover(200);
+	ck_assert_ptr_nonnull(found);
+	/* Zero or more devices on the LAN; either is fine. */
+	musiccast_discover_list_free(found);
+}
+END_TEST
+
+START_TEST(test_init_unreachable_host)
+{
+	musiccast_conn_t *mc;
+
+	/* Loopback address with no listener on port 80 (not 127.0.0.1 — may run a web server). */
+	mc = musiccast_init("127.0.0.99");
+	ck_assert_ptr_null(mc);
+}
+END_TEST
+
+START_TEST(test_init_invalid_hostname)
+{
+	musiccast_conn_t *mc;
+
+	/* Unresolvable name must not abort the process. */
+	mc = musiccast_init("libmusiccast.invalid.");
+	ck_assert_ptr_null(mc);
+}
+END_TEST
+
+Suite *libmusiccast_suite(void)
 {
 	Suite *s;
 	TCase *tc_core;
+	TCase *tc_discover;
 
 	s = suite_create("musiccast");
 
-	/* Core test case */
-	tc_core = tcase_create("Core");
+	tc_discover = tcase_create("discover");
+	tcase_add_test(tc_discover, test_discover_list_free_null);
+	tcase_add_test(tc_discover, test_discover_short_timeout);
+	suite_add_tcase(s, tc_discover);
 
-	tcase_add_test(tc_core, test_musiccast_create_destroy);
+	tc_core = tcase_create("connection");
+	tcase_add_test(tc_core, test_init_unreachable_host);
+	tcase_add_test(tc_core, test_init_invalid_hostname);
 	suite_add_tcase(s, tc_core);
 
 	return s;

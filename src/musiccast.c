@@ -56,7 +56,8 @@ musiccast_conn_t * musiccast_init(const char *hostname)
 
 	if (mcc->ip.s_addr == 0) {
 		fprintf(stderr, "Failed to resolve hostname!\n");
-		exit(1);
+		free(mcc);
+		return NULL;
 	}
 
 	// get device info
@@ -133,15 +134,29 @@ char *musiccast_system_device_info(musiccast_conn_t *mc)
 static bool musiccast_system_device_info_parse(musiccast_conn_t *mcc, const char *device_info)
 {
 	json_object *jobj = json_tokener_parse(device_info);
-	json_object *jobj_model_name = json_object_object_get(jobj, "model_name");
+	json_object *jobj_model_name;
+	json_object *jobj_device_id;
+	json_object *jobj_system_id;
+
+	if (!jobj)
+		return false;
+
+	jobj_model_name = json_object_object_get(jobj, "model_name");
+	jobj_device_id = json_object_object_get(jobj, "device_id");
+	jobj_system_id = json_object_object_get(jobj, "system_id");
+	if (!jobj_model_name || !json_object_is_type(jobj_model_name, json_type_string)) {
+		json_object_put(jobj);
+		return false;
+	}
+
 	mcc->device.model_name = strdup(json_object_get_string(jobj_model_name));
-	json_object *jobj_device_id = json_object_object_get(jobj, "device_id");
-	mcc->device.device_id = strdup(json_object_get_string(jobj_device_id));
-	json_object *jobj_system_id = json_object_object_get(jobj, "system_id");
-	mcc->device.system_id = strdup(json_object_get_string(jobj_system_id));
+	if (jobj_device_id && json_object_is_type(jobj_device_id, json_type_string))
+		mcc->device.device_id = strdup(json_object_get_string(jobj_device_id));
+	if (jobj_system_id && json_object_is_type(jobj_system_id, json_type_string))
+		mcc->device.system_id = strdup(json_object_get_string(jobj_system_id));
 	json_object_put(jobj);
 
-	return true;
+	return mcc->device.model_name != NULL;
 }
 
 char *musiccast_system_features(musiccast_conn_t *mc)
