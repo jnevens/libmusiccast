@@ -22,6 +22,7 @@
 // static function declarations
 static bool musiccast_system_device_info_parse(musiccast_conn_t *mcc, const char *device_info);
 static bool musiccast_system_features_parse(musiccast_conn_t *mcc, const char *system_features);
+static bool musiccast_response_ok(const char *response);
 bool musiccast_zone_status_parse(musiccast_conn_t *mc, int zone, const char *zone_state);
 
 struct in_addr hostname_to_ip(const char * hostname)
@@ -234,6 +235,77 @@ char *musiccast_system_sound_program_list(musiccast_conn_t *mc)
 	char *response = NULL;
 	musiccast_request(mc, "/YamahaExtendedControl/v1/system/getSoundProgramList", &response);
 	return response;
+}
+
+musiccast_zone_list_t *musiccast_zone_list(musiccast_conn_t *mc)
+{
+	char *response = NULL;
+	json_object *jobj;
+	json_object *jobj_zones;
+	musiccast_zone_list_t *list;
+
+	if (!mc)
+		return NULL;
+
+	if (!musiccast_request(mc, "/YamahaExtendedControl/v1/system/getFeatures", &response))
+		return NULL;
+	if (!response || !musiccast_response_ok(response)) {
+		free(response);
+		return NULL;
+	}
+
+	jobj = json_tokener_parse(response);
+	free(response);
+	if (!jobj)
+		return NULL;
+
+	jobj_zones = json_object_object_get(jobj, "zone");
+	if (!jobj_zones || !json_object_is_type(jobj_zones, json_type_array)) {
+		json_object_put(jobj);
+		return NULL;
+	}
+
+	list = calloc(1, sizeof(*list));
+	if (!list) {
+		json_object_put(jobj);
+		return NULL;
+	}
+
+	list->count = (size_t)json_object_array_length(jobj_zones);
+	if (list->count > 0) {
+		list->zones = calloc(list->count, sizeof(*list->zones));
+		if (!list->zones) {
+			free(list);
+			json_object_put(jobj);
+			return NULL;
+		}
+	}
+
+	for (size_t i = 0; i < list->count; i++) {
+		json_object *jobj_zone = json_object_array_get_idx(jobj_zones, (int)i);
+		json_object *jobj_id = json_object_object_get(jobj_zone, "id");
+		const char *id;
+
+		if (!jobj_id || !json_object_is_type(jobj_id, json_type_string))
+			continue;
+
+		id = json_object_get_string(jobj_id);
+		list->zones[i].id = strdup(id);
+	}
+
+	json_object_put(jobj);
+	return list;
+}
+
+void musiccast_zone_list_free(musiccast_zone_list_t *list)
+{
+	if (!list)
+		return;
+
+	for (size_t i = 0; i < list->count; i++)
+		free(list->zones[i].id);
+	free(list->zones);
+	free(list);
 }
 
 bool musiccast_zone_power_set(musiccast_conn_t *mc, const char *zone, musiccast_power_state_e state)

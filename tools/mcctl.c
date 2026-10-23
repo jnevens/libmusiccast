@@ -11,7 +11,7 @@ static char doc[] =
 	"mcctl -a HOST COMMAND [options]\n"
 	"mcctl HOST COMMAND [options]\n"
 	"\n"
-	"Commands: device-info, features, network-status, func-status, location-info,\n"
+	"Commands: device-info, features, zones, network-status, func-status, location-info,\n"
 	"          status, sound-program-list, power [on|standby|toggle],\n"
 	"          volume [LEVEL|up|down] (LEVEL within min-max from getFeatures;\n"
 	"          use --step with up/down, default 1),\n"
@@ -53,6 +53,7 @@ struct arguments_s {
 	bool location_info;
 	bool status;
 	bool sound_program_list;
+	bool zones_cmd;
 	bool power_cmd;
 	bool volume_cmd;
 	bool zone_mute;
@@ -82,7 +83,8 @@ static bool arguments_has_action(const struct arguments_s *args)
 {
 	return args->device_info || args->features || args->network_status
 		|| args->func_status || args->location_info || args->status
-		|| args->sound_program_list || args->power_cmd || args->volume_cmd
+		|| args->sound_program_list || args->zones_cmd || args->power_cmd
+		|| args->volume_cmd
 		|| args->zone_mute || args->preset_cmd;
 }
 
@@ -118,6 +120,10 @@ static bool parse_command(const char *arg, struct arguments_s *args)
 	}
 	if (strcmp(arg, "sound-program-list") == 0) {
 		args->sound_program_list = 1;
+		return true;
+	}
+	if (strcmp(arg, "zones") == 0) {
+		args->zones_cmd = 1;
 		return true;
 	}
 	if (strcmp(arg, "power") == 0) {
@@ -269,6 +275,25 @@ static void detect_print_results(const musiccast_discover_list_t *found, bool ve
 		if (verbose)
 			printf("  %-*s", (int)w_id, id);
 		printf("\n");
+	}
+}
+
+static void zones_print_list(const musiccast_zone_list_t *list)
+{
+	size_t w_zone = strlen("ZONE");
+
+	for (size_t i = 0; i < list->count; i++) {
+		const char *id = list->zones[i].id ? list->zones[i].id : "";
+
+		detect_update_width(&w_zone, id);
+	}
+
+	printf("%-*s\n", (int)w_zone, "ZONE");
+
+	for (size_t i = 0; i < list->count; i++) {
+		const char *id = list->zones[i].id ? list->zones[i].id : "";
+
+		printf("%-*s\n", (int)w_zone, id);
 	}
 }
 
@@ -501,6 +526,18 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 		}
 		printf("%s", response);
 		free(response);
+		return 0;
+	}
+	if (args->zones_cmd) {
+		musiccast_zone_list_t *list = musiccast_zone_list(mcc);
+
+		if (!list) {
+			fprintf(stderr, "Failed to retrieve zone list!\n");
+			return 1;
+		}
+		if (!args->silent)
+			zones_print_list(list);
+		musiccast_zone_list_free(list);
 		return 0;
 	}
 	if (args->power_cmd) {

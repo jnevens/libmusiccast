@@ -58,6 +58,15 @@ typedef struct musiccast_netusb_preset_list_s {
 	size_t count;
 } musiccast_netusb_preset_list_t;
 
+typedef struct musiccast_zone_entry_s {
+	char *id;
+} musiccast_zone_entry_t;
+
+typedef struct musiccast_zone_list_s {
+	musiccast_zone_entry_t *zones;
+	size_t count;
+} musiccast_zone_list_t;
+
 musiccast_conn_t *musiccast_connect(const char *hostname);
 musiccast_conn_t * musiccast_init(const char *hostname);
 void musiccast_destroy(musiccast_conn_t *mcc);
@@ -75,6 +84,8 @@ char *musiccast_system_location_info(musiccast_conn_t *mc);
 char *musiccast_system_sound_program_list(musiccast_conn_t *mc);
 
 /* zone */
+musiccast_zone_list_t *musiccast_zone_list(musiccast_conn_t *mc);
+void musiccast_zone_list_free(musiccast_zone_list_t *list);
 bool musiccast_zone_power_set(musiccast_conn_t *mc, const char *zone, musiccast_power_state_e state);
 char *musiccast_zone_power_get(musiccast_conn_t *mc, const char *zone);
 char *musiccast_zone_status(musiccast_conn_t *mc, const char *zone);
