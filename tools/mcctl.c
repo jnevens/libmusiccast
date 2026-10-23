@@ -6,39 +6,41 @@
 
 #include <musiccast.h>
 
-/* Program documentation. */
-static char doc[] = "mcctl detect | mcctl HOSTNAME [options]";
+static char doc[] =
+	"mcctl detect [options]\n"
+	"mcctl -a HOST COMMAND [options]\n"
+	"mcctl HOST COMMAND [options]\n"
+	"\n"
+	"Commands: device-info, features, network-status, func-status, location-info,\n"
+	"          status, sound-program-list\n"
+	"          (zone controls: --power-set, --mute, --volume)";
 
-/* A description of the arguments we accept. */
-static char args_doc[] = "detect | HOSTNAME";
+static char args_doc[] = "detect | COMMAND";
 
-/* The options we understand. */
 static struct argp_option options[] = {
-		{ "verbose", 'v', 0, 0, "Produce verbose output" },
-		{ "quiet", 'q', 0, 0, "Don't produce any output" },
-		{ "silent", 's', 0, OPTION_ALIAS },
-//		{ "output", 'o', "FILE", 0, "Output to FILE instead of standard output" },
-		{0,0,0,0,"Request system information"},
-		{ "device-info", -1, 0, 0, "Show system device info" },
-		{ "features", -2, 0, 0, "Show system features" },
-		{ "network-status", -3, 0, 0, "Show system network status" },
-		{ "func-status", -4, 0, 0, "Show system func status" },
-		{ "location-info", -5, 0, 0, "Show system location info" },
-		{ "status", -6, 0, 0, "Show zone status" },
-		{ "sound-program-list", -7, 0, 0, "Show system sound program list" },
-		{ "power-set", -8, "state", 0, "Set zone power" },
-		{ "mute", -9, "1", 0, "Mute zone (1/0)" },
-		{ "volume", -10, "val", 0, "Set zone value (50/up/down) (step with --step)" },
-		{ "step", -11, "step", 0, "Set volume step (default = 1)" },
-		{ "zone", 'z', "zone", 0, "Select zone" },
-		{ "timeout", 't', "SECONDS", 0, "Discovery wait time (with detect)" },
-		{ 0 }
+	{ "address", 'a', "HOST", 0, "MusicCast device address (IP or hostname)" },
+	{ "verbose", 'v', 0, 0, "Produce verbose output" },
+	{ "quiet", 'q', 0, 0, "Don't produce any output" },
+	{ "silent", 's', 0, OPTION_ALIAS },
+	{0, 0, 0, 0, "Request system information (flags or COMMAND)"},
+	{ "device-info", -1, 0, 0, "Show system device info" },
+	{ "features", -2, 0, 0, "Show system features" },
+	{ "network-status", -3, 0, 0, "Show system network status" },
+	{ "func-status", -4, 0, 0, "Show system func status" },
+	{ "location-info", -5, 0, 0, "Show system location info" },
+	{ "status", -6, 0, 0, "Show zone status" },
+	{ "sound-program-list", -7, 0, 0, "Show system sound program list" },
+	{ "power-set", -8, "state", 0, "Set zone power" },
+	{ "mute", -9, "1", 0, "Mute zone (1/0)" },
+	{ "volume", -10, "val", 0, "Set zone value (50/up/down) (step with --step)" },
+	{ "step", -11, "step", 0, "Set volume step (default = 1)" },
+	{ "zone", 'z', "zone", 0, "Select zone" },
+	{ "timeout", 't', "SECONDS", 0, "Discovery wait time (with detect)" },
+	{ 0 }
 };
 
-/* Used by main to communicate with parse_opt. */
 struct arguments_s {
 	char *hostname;
-	char *command;
 	bool silent;
 	bool verbose;
 	bool detect;
@@ -60,12 +62,54 @@ struct arguments_s {
 	const char *zone;
 };
 
-struct arguments_s arguments = {
-		.silent = 0,
-		.verbose = 0,
-		.hostname = NULL,
-		.detect_timeout_sec = 3,
+static struct arguments_s arguments = {
+	.detect_timeout_sec = 3,
 };
+
+static bool arguments_has_action(const struct arguments_s *args)
+{
+	return args->device_info || args->features || args->network_status
+		|| args->func_status || args->location_info || args->status
+		|| args->sound_program_list || args->power_set || args->zone_mute
+		|| args->zone_volume_set;
+}
+
+static bool parse_command(const char *arg, struct arguments_s *args)
+{
+	if (strcmp(arg, "detect") == 0) {
+		args->detect = 1;
+		return true;
+	}
+	if (strcmp(arg, "device-info") == 0) {
+		args->device_info = 1;
+		return true;
+	}
+	if (strcmp(arg, "features") == 0) {
+		args->features = 1;
+		return true;
+	}
+	if (strcmp(arg, "network-status") == 0) {
+		args->network_status = 1;
+		return true;
+	}
+	if (strcmp(arg, "func-status") == 0) {
+		args->func_status = 1;
+		return true;
+	}
+	if (strcmp(arg, "location-info") == 0) {
+		args->location_info = 1;
+		return true;
+	}
+	if (strcmp(arg, "status") == 0) {
+		args->status = 1;
+		return true;
+	}
+	if (strcmp(arg, "sound-program-list") == 0) {
+		args->sound_program_list = 1;
+		return true;
+	}
+	return false;
+}
 
 static size_t detect_field_len(const char *s)
 {
@@ -124,83 +168,82 @@ static void detect_print_results(const musiccast_discover_list_t *found, bool ve
 	}
 }
 
-/* Parse a single option. */
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
 {
-	/* Get the input argument from argp_parse, which we
-	 know is a pointer to our arguments structure. */
-	struct arguments_s *arguments = state->input;
+	struct arguments_s *args = state->input;
 
 	switch (key) {
+	case 'a':
+		args->hostname = arg;
+		break;
 	case 'q':
 	case 's':
-		arguments->silent = 1;
+		args->silent = 1;
 		break;
 	case 'v':
-		arguments->verbose = 1;
+		args->verbose = 1;
 		break;
 	case 'z':
-		arguments->zone = arg;
+		args->zone = arg;
 		break;
 	case 't':
-		arguments->detect_timeout_sec = (unsigned int)atoi(arg);
-		if (arguments->detect_timeout_sec == 0)
-			arguments->detect_timeout_sec = 3;
+		args->detect_timeout_sec = (unsigned int)atoi(arg);
+		if (args->detect_timeout_sec == 0)
+			args->detect_timeout_sec = 3;
 		break;
 	case -1:
-		arguments->device_info = 1;
+		args->device_info = 1;
 		break;
 	case -2:
-		arguments->features = 1;
+		args->features = 1;
 		break;
 	case -3:
-		arguments->network_status = 1;
+		args->network_status = 1;
 		break;
 	case -4:
-		arguments->func_status = 1;
+		args->func_status = 1;
 		break;
 	case -5:
-		arguments->location_info = 1;
+		args->location_info = 1;
 		break;
 	case -6:
-		arguments->status = 1;
+		args->status = 1;
 		break;
 	case -7:
-		arguments->sound_program_list = 1;
+		args->sound_program_list = 1;
 		break;
 	case -8:
-		arguments->power_set = 1;
-		arguments->power_state = arg;
+		args->power_set = 1;
+		args->power_state = arg;
 		break;
 	case -9:
-		arguments->zone_mute = 1;
-		arguments->zone_mute_state = true;
+		args->zone_mute = 1;
+		args->zone_mute_state = true;
 		if (strcmp(arg, "0") == 0)
-			arguments->zone_mute_state = false;
+			args->zone_mute_state = false;
 		break;
 	case -10:
-		arguments->zone_volume_set = 1;
-		arguments->zone_volume = arg;
+		args->zone_volume_set = 1;
+		args->zone_volume = arg;
 		break;
 	case -11:
-		arguments->zone_volume_step = arg;
+		args->zone_volume_step = arg;
 		break;
 	case ARGP_KEY_ARG:
-		if (state->arg_num >= 2)
-			argp_usage(state);
-		if (state->arg_num == 0) {
-			if (strcmp(arg, "detect") == 0)
-				arguments->detect = 1;
-			else
-				arguments->hostname = arg;
-		} else if (state->arg_num == 1) {
-			arguments->command = arg;
+		if (parse_command(arg, args))
+			break;
+		if (!args->hostname) {
+			args->hostname = arg;
+			break;
 		}
+		argp_usage(state);
 		break;
 	case ARGP_KEY_END:
-		if (state->arg_num < 1)
+		if (args->detect)
+			break;
+		if (!args->hostname)
 			argp_usage(state);
-		if (!arguments->detect && !arguments->hostname)
+		if (!arguments_has_action(args))
 			argp_usage(state);
 		break;
 	default:
@@ -209,13 +252,147 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	return 0;
 }
 
-/* Our argp parser. */
 static struct argp argp = { options, parse_opt, args_doc, doc };
+
+static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
+{
+	if (args->device_info) {
+		char *device_info = musiccast_system_device_info(mcc);
+
+		if (!device_info) {
+			fprintf(stderr, "Failed to retrieve system device info!\n");
+			return 1;
+		}
+		printf("%s", device_info);
+		free(device_info);
+		return 0;
+	}
+	if (args->features) {
+		char *system_features = musiccast_system_features(mcc);
+
+		if (!system_features) {
+			fprintf(stderr, "Failed to retrieve system features!\n");
+			return 1;
+		}
+		printf("%s", system_features);
+		free(system_features);
+		return 0;
+	}
+	if (args->network_status) {
+		char *response = musiccast_system_network_status(mcc);
+
+		if (!response) {
+			fprintf(stderr, "Failed to retrieve system network status!\n");
+			return 1;
+		}
+		printf("%s", response);
+		free(response);
+		return 0;
+	}
+	if (args->func_status) {
+		char *response = musiccast_system_func_status(mcc);
+
+		if (!response) {
+			fprintf(stderr, "Failed to retrieve system func status!\n");
+			return 1;
+		}
+		printf("%s", response);
+		free(response);
+		return 0;
+	}
+	if (args->location_info) {
+		char *response = musiccast_system_location_info(mcc);
+
+		if (!response) {
+			fprintf(stderr, "Failed to retrieve system location info!\n");
+			return 1;
+		}
+		printf("%s", response);
+		free(response);
+		return 0;
+	}
+	if (args->status) {
+		char *zone_status;
+
+		if (!args->zone) {
+			fprintf(stderr, "Please select zone (--zone=main)\n");
+			return 1;
+		}
+		zone_status = musiccast_zone_status(mcc, args->zone);
+		if (!zone_status) {
+			fprintf(stderr, "Failed to retrieve zone (%s) status!\n", args->zone);
+			return 1;
+		}
+		printf("%s", zone_status);
+		free(zone_status);
+		return 0;
+	}
+	if (args->sound_program_list) {
+		char *response = musiccast_system_sound_program_list(mcc);
+
+		if (!response) {
+			fprintf(stderr, "Failed to retrieve system sound program list!\n");
+			return 1;
+		}
+		printf("%s", response);
+		free(response);
+		return 0;
+	}
+	if (args->power_set) {
+		if (strcmp(args->power_state, "on") == 0) {
+			if (!musiccast_zone_power_set(mcc, args->zone, MC_POWER_STATE_ON))
+				fprintf(stderr, "Failed to zone power (%s) status!\n", args->zone);
+		} else if (strcmp(args->power_state, "standby") == 0) {
+			if (!musiccast_zone_power_set(mcc, args->zone, MC_POWER_STATE_STANDBY))
+				fprintf(stderr, "Failed to zone power (%s) status!\n", args->zone);
+		} else if (strcmp(args->power_state, "toggle") == 0) {
+			if (!musiccast_zone_power_set(mcc, args->zone, MC_POWER_STATE_TOGGLE))
+				fprintf(stderr, "Failed to zone power (%s) status!\n", args->zone);
+		} else {
+			fprintf(stderr, "Invalid power state!\n");
+			return 1;
+		}
+		return 0;
+	}
+	if (args->zone_mute) {
+		if (!args->zone) {
+			fprintf(stderr, "Please select zone (--zone=main)\n");
+			return 1;
+		}
+		if (!musiccast_zone_mute(mcc, args->zone, args->zone_mute_state)) {
+			fprintf(stderr, "Failed to mute zone!\n");
+			return 1;
+		}
+		return 0;
+	}
+	if (args->zone_volume_set) {
+		int step_volume = args->zone_volume_step ? atoi(args->zone_volume_step) : 1;
+		musiccast_zone_volume_action_e action = MC_ZONE_VOLUME_SET_DIRECT;
+
+		if (strcmp(args->zone_volume, "up") == 0)
+			action = MC_ZONE_VOLUME_SET_UP;
+		else if (strcmp(args->zone_volume, "down") == 0)
+			action = MC_ZONE_VOLUME_SET_DOWN;
+		else
+			step_volume = atoi(args->zone_volume);
+
+		if (!args->zone) {
+			fprintf(stderr, "Please select zone (--zone=main)\n");
+			return 1;
+		}
+		if (!musiccast_zone_volume_set(mcc, args->zone, action, step_volume)) {
+			fprintf(stderr, "Failed to set volume of zone (%s)!\n", args->zone);
+			return 1;
+		}
+		return 0;
+	}
+	return 1;
+}
 
 int main(int argc, char *argv[])
 {
-	/* Parse our arguments; every option seen by parse_opt will
-	 be reflected in arguments. */
+	int rv;
+
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 	if (arguments.detect) {
@@ -234,86 +411,13 @@ int main(int argc, char *argv[])
 	}
 
 	musiccast_conn_t *mcc = musiccast_init(arguments.hostname);
+
 	if (mcc == NULL) {
 		fprintf(stderr, "Failed to initialize libMusicCast!\n");
-		return -1;
+		return 1;
 	}
 
-	if (arguments.device_info) {
-		char *device_info = musiccast_system_device_info(mcc);
-		if (!device_info) {
-			fprintf(stderr, "Failed to retrieve system device info!\n");
-		} else {
-			printf("%s", device_info);
-			free(device_info);
-		}
-	} else if (arguments.features) {
-		char *system_features = musiccast_system_features(mcc);
-		if (!system_features) {
-			fprintf(stderr, "Failed to retrieve system features!\n");
-		} else {
-			printf("%s", system_features);
-			free(system_features);
-		}
-	} else if (arguments.network_status) {
-		if (!musiccast_system_network_status(mcc))
-			fprintf(stderr, "Failed to retrieve system network status!\n");
-	} else if (arguments.func_status) {
-		if (!musiccast_system_func_status(mcc))
-			fprintf(stderr, "Failed to retrieve system func status!\n");
-	} else if (arguments.location_info) {
-		if (!musiccast_system_location_info(mcc))
-			fprintf(stderr, "Failed to retrieve system location info!\n");
-	} else if (arguments.status) {
-		if (!arguments.zone) {
-			fprintf(stderr, "Please select zone (--zone=main)");
-		} else {
-			char *zone_status = musiccast_zone_status(mcc, arguments.zone);
-			if (!zone_status) {
-				fprintf(stderr, "Failed to retrieve zone (%s) status!\n", arguments.zone);
-			} else {
-				printf("%s", zone_status);
-				free(zone_status);
-			}
-		}
-	} else if (arguments.sound_program_list) {
-		if (!musiccast_system_sound_program_list(mcc))
-			fprintf(stderr, "Failed to retrieve system sound program list!\n");
-	} else if (arguments.power_set) {
-		if (strcmp(arguments.power_state, "on") == 0) {
-			if (!musiccast_zone_power_set(mcc, arguments.zone, MC_POWER_STATE_ON))
-				fprintf(stderr, "Failed to zone power (%s) status!\n", arguments.zone);
-		} else if (strcmp(arguments.power_state, "standby") == 0) {
-			if (!musiccast_zone_power_set(mcc, arguments.zone, MC_POWER_STATE_STANDBY))
-				fprintf(stderr, "Failed to zone power (%s) status!\n", arguments.zone);
-		} else if (strcmp(arguments.power_state, "toggle") == 0) {
-			if (!musiccast_zone_power_set(mcc, arguments.zone, MC_POWER_STATE_TOGGLE))
-				fprintf(stderr, "Failed to zone power (%s) status!\n", arguments.zone);
-		} else {
-			fprintf(stderr, "Invalid power state!\n");
-		}
-	} else if (arguments.zone_mute) {
-		if (!arguments.zone)
-			fprintf(stderr, "Please select zone (--zone=main)");
-		else if (musiccast_zone_mute(mcc, arguments.zone, arguments.zone_mute_state))
-			fprintf(stderr, "Failed to mute zone!\n");
-	} else if (arguments.zone_volume_set) {
-		int step_volume = (arguments.zone_volume_step) ? atoi(arguments.zone_volume_step) : 1;
-		musiccast_zone_volume_action_e action = MC_ZONE_VOLUME_SET_DIRECT;
-		if (strcmp(arguments.zone_volume, "up") == 0) {
-			action = MC_ZONE_VOLUME_SET_UP;
-		} else if (strcmp(arguments.zone_volume, "down") == 0) {
-			action = MC_ZONE_VOLUME_SET_DOWN;
-		} else {
-			step_volume = atoi(arguments.zone_volume);
-		}
-		if (!arguments.zone) {
-			fprintf(stderr, "Please select zone (--zone=main)");
-		} else if (!musiccast_zone_volume_set(mcc, arguments.zone, action, step_volume)) {
-			fprintf(stderr, "Failed to set volume of zone (%s)!\n", arguments.zone);
-		}
-	}
-
+	rv = run_device_commands(mcc, &arguments);
 	musiccast_destroy(mcc);
-	return 0;
+	return rv;
 }
