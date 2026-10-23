@@ -35,6 +35,7 @@ Makefile.in
 .autotools
 config.*
 configure
+configure~
 .libs
 .deps
 autom4te.cache
@@ -59,10 +60,12 @@ libmusiccast.pc
 tests/*.log
 test-driver
 tests/*.trs
+tests/check_*
 
 #coverage
 coverage.info
+coverage-summary.txt
 coverage
 *.gcno
 *.gcov
-tests/*.gcda
+*.gcda
