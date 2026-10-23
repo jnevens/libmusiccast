@@ -1,0 +1,54 @@
+# Build, unit tests, and line coverage (HTML report + summary in job artifacts).
+#
+# Download artifacts from the job: coverage/ (genhtml), coverage.info,
+# coverage-summary.txt, tests/test-suite.log
+
+stages:
+  - test
+
+variables:
+  # Required when --enable-gcov is used (see m4/gcov.m4).
+  CCACHE_DISABLE: "1"
+  # Uninstalled libtool build: tests link against libmusiccast.so in src/.libs
+  LD_LIBRARY_PATH: "${CI_PROJECT_DIR}/src/.libs"
+  APT_PACKAGES: >-
+    autoconf automake libtool pkg-config
+    build-essential
+    libcurl4-openssl-dev libjson-c-dev
+    check libsubunit-dev
+    lcov gcovr
+
+.test_image:
+  image: ubuntu:24.04
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt-get update -qq
+    - apt-get install -y -qq ${APT_PACKAGES}
+
+build-test-coverage:
+  extends: .test_image
+  stage: test
+  script:
+    - autoreconf -fi
+    - ./configure --enable-tests --enable-gcov --disable-valgrind
+    - export LD_LIBRARY_PATH="${CI_PROJECT_DIR}/src/.libs${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    - make coverage AM_COLOR_TESTS=always
+    - lcov --summary coverage.info | tee coverage-summary.txt
+    - |
+      gcovr -r "${CI_PROJECT_DIR}" \
+        --filter "${CI_PROJECT_DIR}/src/" \
+        --cobertura "${CI_PROJECT_DIR}/coverage/cobertura.xml"
+  coverage: '/lines\.*: (\d+\.\d+)%/'
+  artifacts:
+    when: always
+    expire_in: 30 days
+    expose_as: "build tests and coverage"
+    paths:
+      - coverage/
+      - coverage.info
+      - coverage-summary.txt
+      - tests/test-suite.log
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura.xml

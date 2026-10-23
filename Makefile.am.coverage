@@ -16,12 +16,9 @@ coverage-requirement-check:
 coverage: coverage-requirement-check clean-coverage coverage-build coverage-check coverage-report
 
 coverage-build: coverage-requirement-check
-	@if test `find $(top_builddir) -name "*.gcno" | wc -l` -eq 0 -a \
-		`find $(top_builddir) -name "*.bb" -o -name "*.bbg" | wc -l` -eq 0; then \
-		echo "Starting to remove old non-instrumented object files..."; \
-		$(MAKE) $(AM_MAKEFLAGS) clean; \
-		echo "Successfully removed old non-instrumented object files."; \
-	fi
+	@echo "Starting to remove old non-instrumented object files..."
+	$(MAKE) $(AM_MAKEFLAGS) clean
+	@echo "Successfully removed old non-instrumented object files."
 	@echo "Starting to build libraries with coverage options..."
 	$(MAKE) $(AM_MAKEFLAGS) \
 		CFLAGS="$(CFLAGS) $(COVERAGE_CFLAGS) $(COVERAGE_OPTIMIZATION_FLAGS)" \
