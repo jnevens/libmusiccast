@@ -480,15 +480,12 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 		return 0;
 	}
 	if (args->status) {
+		const char *zone = command_zone(args);
 		char *zone_status;
 
-		if (!args->zone) {
-			fprintf(stderr, "Please select zone (--zone=main)\n");
-			return 1;
-		}
-		zone_status = musiccast_zone_status(mcc, args->zone);
+		zone_status = musiccast_zone_status(mcc, zone);
 		if (!zone_status) {
-			fprintf(stderr, "Failed to retrieve zone (%s) status!\n", args->zone);
+			fprintf(stderr, "Failed to retrieve zone (%s) status!\n", zone);
 			return 1;
 		}
 		printf("%s", zone_status);
