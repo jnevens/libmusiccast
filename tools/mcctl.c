@@ -155,11 +155,21 @@ int main(int argc, char *argv[])
 	}
 
 	if (arguments.device_info) {
-		if (!musiccast_system_device_info(mcc))
+		char *device_info = musiccast_system_device_info(mcc);
+		if (!device_info) {
 			fprintf(stderr, "Failed to retrieve system device info!\n");
+		} else {
+			printf("%s", device_info);
+			free(device_info);
+		}
 	} else if (arguments.features) {
-		if (!musiccast_system_features(mcc))
+		char *system_features = musiccast_system_features(mcc);
+		if (!system_features) {
 			fprintf(stderr, "Failed to retrieve system features!\n");
+		} else {
+			printf("%s", system_features);
+			free(system_features);
+		}
 	} else if (arguments.network_status) {
 		if (!musiccast_system_network_status(mcc))
 			fprintf(stderr, "Failed to retrieve system network status!\n");
@@ -170,10 +180,17 @@ int main(int argc, char *argv[])
 		if (!musiccast_system_location_info(mcc))
 			fprintf(stderr, "Failed to retrieve system location info!\n");
 	} else if (arguments.status) {
-		if (!arguments.zone)
+		if (!arguments.zone) {
 			fprintf(stderr, "Please select zone (--zone=main)");
-		else if (!musiccast_zone_status(mcc, arguments.zone))
-			fprintf(stderr, "Failed to retrieve zone (%s) status!\n", arguments.zone);
+		} else {
+			char *zone_status = musiccast_zone_status(mcc, arguments.zone);
+			if (!zone_status) {
+				fprintf(stderr, "Failed to retrieve zone (%s) status!\n", arguments.zone);
+			} else {
+				printf("%s", zone_status);
+				free(zone_status);
+			}
+		}
 	} else if (arguments.sound_program_list) {
 		if (!musiccast_system_sound_program_list(mcc))
 			fprintf(stderr, "Failed to retrieve system sound program list!\n");

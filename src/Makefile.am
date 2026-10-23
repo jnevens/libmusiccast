@@ -4,7 +4,7 @@ AM_CFLAGS =
 lib_LTLIBRARIES = libmusiccast.la
 
 libmusiccast_la_LIBADD =
-libmusiccast_la_LDFLAGS = -lcurl
+libmusiccast_la_LDFLAGS = -lcurl -ljson-c
 
 libmusiccast_la_SOURCES = \
 	musiccast.c \

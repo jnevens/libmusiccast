@@ -1,15 +1,15 @@
 # Copyright 2012 Canonical Ltd.
 #
-# This program is free software: you can redistribute it and/or modify it 
-# under the terms of the GNU General Public License version 3, as published 
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 3, as published
 # by the Free Software Foundation.
 #
-# This program is distributed in the hope that it will be useful, but 
-# WITHOUT ANY WARRANTY; without even the implied warranties of 
-# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR 
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranties of
+# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR
 # PURPOSE.  See the GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along 
+# You should have received a copy of the GNU General Public License along
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Checks for existence of coverage tools:
@@ -17,7 +17,7 @@
 #  * lcov
 #  * genhtml
 #  * gcovr
-# 
+#
 # Sets ac_cv_check_gcov to yes if tooling is present
 # and reports the executables to the variables LCOV, GCOVR and GENHTML.
 AC_DEFUN([AC_TDD_GCOV],
@@ -47,14 +47,14 @@ AC_DEFUN([AC_TDD_GCOV],
     AC_MSG_ERROR([ccache must be disabled when --enable-gcov option is used. You can disable ccache by setting environment variable CCACHE_DISABLE=1.])
   fi
 
-  lcov_version_list="1.6 1.7 1.8 1.9 1.10 1.12"
+  lcov_version_list="1.6 1.7 1.8 1.9 1.10 1.12 2.0"
   AC_CHECK_PROG(LCOV, lcov, lcov)
   AC_CHECK_PROG(GENHTML, genhtml, genhtml)
 
   if test "$LCOV"; then
     AC_CACHE_CHECK([for lcov version], glib_cv_lcov_version, [
       glib_cv_lcov_version=invalid
-      lcov_version=`$LCOV -v 2>/dev/null | $SED -e 's/^.* //'`
+      lcov_version=`($LCOV --version 2>/dev/null || $LCOV -v 2>/dev/null) | $SED -e 's/^.*version //' -e 's/-.*//' -e 's/.* //'`
       for lcov_check_version in $lcov_version_list; do
         if test "$lcov_version" = "$lcov_check_version"; then
           glib_cv_lcov_version="$lcov_check_version (ok)"
