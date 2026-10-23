@@ -37,6 +37,7 @@ typedef enum {
 	MC_ZONE_VOLUME_SET_DIRECT,
 } musiccast_zone_volume_action_e;
 
+musiccast_conn_t *musiccast_connect(const char *hostname);
 musiccast_conn_t * musiccast_init(const char *hostname);
 void musiccast_destroy(musiccast_conn_t *mcc);
 
@@ -54,6 +55,7 @@ char *musiccast_system_sound_program_list(musiccast_conn_t *mc);
 
 /* zone */
 bool musiccast_zone_power_set(musiccast_conn_t *mc, const char *zone, musiccast_power_state_e state);
+char *musiccast_zone_power_get(musiccast_conn_t *mc, const char *zone);
 char *musiccast_zone_status(musiccast_conn_t *mc, const char *zone);
 bool musiccast_zone_volume_set(musiccast_conn_t *mc, const char *zone, musiccast_zone_volume_action_e action, int volume_step);
 bool musiccast_zone_mute(musiccast_conn_t *mc, const char *zone, bool mute);

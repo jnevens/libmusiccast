@@ -12,8 +12,8 @@ static char doc[] =
 	"mcctl HOST COMMAND [options]\n"
 	"\n"
 	"Commands: device-info, features, network-status, func-status, location-info,\n"
-	"          status, sound-program-list\n"
-	"          (zone controls: --power-set, --mute, --volume)";
+	"          status, sound-program-list, power [on|standby|toggle]\n"
+	"          (zone controls: --mute, --volume; use -z for zone, default main)";
 
 static char args_doc[] = "detect | COMMAND";
 
@@ -30,7 +30,6 @@ static struct argp_option options[] = {
 	{ "location-info", -5, 0, 0, "Show system location info" },
 	{ "status", -6, 0, 0, "Show zone status" },
 	{ "sound-program-list", -7, 0, 0, "Show system sound program list" },
-	{ "power-set", -8, "state", 0, "Set zone power" },
 	{ "mute", -9, "1", 0, "Mute zone (1/0)" },
 	{ "volume", -10, "val", 0, "Set zone value (50/up/down) (step with --step)" },
 	{ "step", -11, "step", 0, "Set volume step (default = 1)" },
@@ -52,7 +51,7 @@ struct arguments_s {
 	bool location_info;
 	bool status;
 	bool sound_program_list;
-	bool power_set;
+	bool power_cmd;
 	bool zone_mute;
 	bool zone_mute_state;
 	bool zone_volume_set;
@@ -70,7 +69,7 @@ static bool arguments_has_action(const struct arguments_s *args)
 {
 	return args->device_info || args->features || args->network_status
 		|| args->func_status || args->location_info || args->status
-		|| args->sound_program_list || args->power_set || args->zone_mute
+		|| args->sound_program_list || args->power_cmd || args->zone_mute
 		|| args->zone_volume_set;
 }
 
@@ -106,6 +105,32 @@ static bool parse_command(const char *arg, struct arguments_s *args)
 	}
 	if (strcmp(arg, "sound-program-list") == 0) {
 		args->sound_program_list = 1;
+		return true;
+	}
+	if (strcmp(arg, "power") == 0) {
+		args->power_cmd = 1;
+		return true;
+	}
+	return false;
+}
+
+static const char *power_zone(const struct arguments_s *args)
+{
+	return args->zone ? args->zone : "main";
+}
+
+static bool parse_power_set_value(const char *state, musiccast_power_state_e *out)
+{
+	if (strcmp(state, "on") == 0) {
+		*out = MC_POWER_STATE_ON;
+		return true;
+	}
+	if (strcmp(state, "standby") == 0) {
+		*out = MC_POWER_STATE_STANDBY;
+		return true;
+	}
+	if (strcmp(state, "toggle") == 0) {
+		*out = MC_POWER_STATE_TOGGLE;
 		return true;
 	}
 	return false;
@@ -212,10 +237,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	case -7:
 		args->sound_program_list = 1;
 		break;
-	case -8:
-		args->power_set = 1;
-		args->power_state = arg;
-		break;
 	case -9:
 		args->zone_mute = 1;
 		args->zone_mute_state = true;
@@ -232,6 +253,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	case ARGP_KEY_ARG:
 		if (parse_command(arg, args))
 			break;
+		if (args->power_cmd && !args->power_state) {
+			args->power_state = arg;
+			break;
+		}
 		if (!args->hostname) {
 			args->hostname = arg;
 			break;
@@ -338,18 +363,29 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 		free(response);
 		return 0;
 	}
-	if (args->power_set) {
-		if (strcmp(args->power_state, "on") == 0) {
-			if (!musiccast_zone_power_set(mcc, args->zone, MC_POWER_STATE_ON))
-				fprintf(stderr, "Failed to zone power (%s) status!\n", args->zone);
-		} else if (strcmp(args->power_state, "standby") == 0) {
-			if (!musiccast_zone_power_set(mcc, args->zone, MC_POWER_STATE_STANDBY))
-				fprintf(stderr, "Failed to zone power (%s) status!\n", args->zone);
-		} else if (strcmp(args->power_state, "toggle") == 0) {
-			if (!musiccast_zone_power_set(mcc, args->zone, MC_POWER_STATE_TOGGLE))
-				fprintf(stderr, "Failed to zone power (%s) status!\n", args->zone);
-		} else {
-			fprintf(stderr, "Invalid power state!\n");
+	if (args->power_cmd) {
+		const char *zone = power_zone(args);
+
+		if (!args->power_state) {
+			char *power = musiccast_zone_power_get(mcc, zone);
+
+			if (!power) {
+				fprintf(stderr, "Failed to retrieve zone (%s) power!\n", zone);
+				return 1;
+			}
+			printf("%s\n", power);
+			free(power);
+			return 0;
+		}
+
+		musiccast_power_state_e state;
+
+		if (!parse_power_set_value(args->power_state, &state)) {
+			fprintf(stderr, "Invalid power state (use on, standby, or toggle)\n");
+			return 1;
+		}
+		if (!musiccast_zone_power_set(mcc, zone, state)) {
+			fprintf(stderr, "Failed to set zone (%s) power!\n", zone);
 			return 1;
 		}
 		return 0;
@@ -410,7 +446,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	musiccast_conn_t *mcc = musiccast_init(arguments.hostname);
+	musiccast_conn_t *mcc = musiccast_connect(arguments.hostname);
 
 	if (mcc == NULL) {
 		fprintf(stderr, "Failed to initialize libMusicCast!\n");
