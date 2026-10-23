@@ -574,6 +574,35 @@ bool musiccast_zone_volume_set(musiccast_conn_t *mc, const char *zone, musiccast
 	return rv;
 }
 
+bool musiccast_zone_mute_get(musiccast_conn_t *mc, const char *zone, bool *muted)
+{
+	char *status;
+	json_object *jobj;
+	json_object *jobj_mute;
+
+	if (!mc || !zone || !muted)
+		return false;
+
+	status = musiccast_zone_status(mc, zone);
+	if (!status)
+		return false;
+
+	jobj = json_tokener_parse(status);
+	free(status);
+	if (!jobj)
+		return false;
+
+	jobj_mute = json_object_object_get(jobj, "mute");
+	if (!jobj_mute || !json_object_is_type(jobj_mute, json_type_boolean)) {
+		json_object_put(jobj);
+		return false;
+	}
+
+	*muted = json_object_get_boolean(jobj_mute);
+	json_object_put(jobj);
+	return true;
+}
+
 bool musiccast_zone_mute(musiccast_conn_t *mc, const char *zone, bool mute)
 {
 	bool rv;

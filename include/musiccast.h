@@ -93,6 +93,7 @@ bool musiccast_zone_volume_get(musiccast_conn_t *mc, const char *zone, int *volu
 bool musiccast_zone_volume_query(musiccast_conn_t *mc, const char *zone,
 				 musiccast_zone_volume_info_t *info);
 bool musiccast_zone_volume_set(musiccast_conn_t *mc, const char *zone, musiccast_zone_volume_action_e action, int volume_step);
+bool musiccast_zone_mute_get(musiccast_conn_t *mc, const char *zone, bool *muted);
 bool musiccast_zone_mute(musiccast_conn_t *mc, const char *zone, bool mute);
 
 /* Net/USB presets (shared across net_radio, server, etc.) */

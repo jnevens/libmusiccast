@@ -14,9 +14,9 @@ static char doc[] =
 	"Commands: device-info, features, zones, network-status, func-status, location-info,\n"
 	"          status, sound-program-list, power [on|standby|toggle],\n"
 	"          volume [LEVEL|up|down] (LEVEL within min-max from getFeatures;\n"
-	"          use --step with up/down, default 1),\n"
+	"          use --step with up/down, default 1), mute [on|off|toggle],\n"
 	"          preset list | preset play NUM | preset store NUM | preset clear NUM\n"
-	"          (zone controls: --mute; use -z for zone, default main)";
+	"          (use -z for zone on zone commands, default main)";
 
 static char args_doc[] = "detect | COMMAND";
 
@@ -33,7 +33,6 @@ static struct argp_option options[] = {
 	{ "location-info", -5, 0, 0, "Show system location info" },
 	{ "status", -6, 0, 0, "Show zone status" },
 	{ "sound-program-list", -7, 0, 0, "Show system sound program list" },
-	{ "mute", -9, "1", 0, "Mute zone (1/0)" },
 	{ "step", -11, "step", 0, "Step for volume up/down (default = 1)" },
 	{ "zone", 'z', "zone", 0, "Select zone" },
 	{ "timeout", 't', "SECONDS", 0, "Discovery wait time (with detect)" },
@@ -56,11 +55,11 @@ struct arguments_s {
 	bool zones_cmd;
 	bool power_cmd;
 	bool volume_cmd;
-	bool zone_mute;
-	bool zone_mute_state;
+	bool mute_cmd;
 	const char *volume_value;
 	const char *volume_step;
 	const char *power_state;
+	const char *mute_state;
 	const char *zone;
 	bool preset_cmd;
 	int preset_action;
@@ -84,8 +83,7 @@ static bool arguments_has_action(const struct arguments_s *args)
 	return args->device_info || args->features || args->network_status
 		|| args->func_status || args->location_info || args->status
 		|| args->sound_program_list || args->zones_cmd || args->power_cmd
-		|| args->volume_cmd
-		|| args->zone_mute || args->preset_cmd;
+		|| args->volume_cmd || args->mute_cmd || args->preset_cmd;
 }
 
 static bool parse_command(const char *arg, struct arguments_s *args)
@@ -132,6 +130,10 @@ static bool parse_command(const char *arg, struct arguments_s *args)
 	}
 	if (strcmp(arg, "volume") == 0) {
 		args->volume_cmd = 1;
+		return true;
+	}
+	if (strcmp(arg, "mute") == 0) {
+		args->mute_cmd = 1;
 		return true;
 	}
 	if (strcmp(arg, "preset") == 0) {
@@ -216,6 +218,25 @@ static bool parse_power_set_value(const char *state, musiccast_power_state_e *ou
 	}
 	if (strcmp(state, "toggle") == 0) {
 		*out = MC_POWER_STATE_TOGGLE;
+		return true;
+	}
+	return false;
+}
+
+static bool parse_mute_set_value(const char *state, bool *toggle, bool *muted)
+{
+	if (strcmp(state, "on") == 0) {
+		*toggle = false;
+		*muted = true;
+		return true;
+	}
+	if (strcmp(state, "off") == 0) {
+		*toggle = false;
+		*muted = false;
+		return true;
+	}
+	if (strcmp(state, "toggle") == 0) {
+		*toggle = true;
 		return true;
 	}
 	return false;
@@ -386,12 +407,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	case -7:
 		args->sound_program_list = 1;
 		break;
-	case -9:
-		args->zone_mute = 1;
-		args->zone_mute_state = true;
-		if (strcmp(arg, "0") == 0)
-			args->zone_mute_state = false;
-		break;
 	case -11:
 		args->volume_step = arg;
 		break;
@@ -404,6 +419,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		}
 		if (args->volume_cmd && !args->volume_value) {
 			args->volume_value = arg;
+			break;
+		}
+		if (args->mute_cmd && !args->mute_state) {
+			args->mute_state = arg;
 			break;
 		}
 		if (args->preset_cmd) {
@@ -610,13 +629,33 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 		}
 		return 0;
 	}
-	if (args->zone_mute) {
-		if (!args->zone) {
-			fprintf(stderr, "Please select zone (--zone=main)\n");
+	if (args->mute_cmd) {
+		const char *zone = command_zone(args);
+		bool do_toggle = false;
+		bool muted = false;
+
+		if (!args->mute_state) {
+			if (!musiccast_zone_mute_get(mcc, zone, &muted)) {
+				fprintf(stderr, "Failed to retrieve zone (%s) mute!\n", zone);
+				return 1;
+			}
+			printf("%s\n", muted ? "on" : "off");
+			return 0;
+		}
+
+		if (!parse_mute_set_value(args->mute_state, &do_toggle, &muted)) {
+			fprintf(stderr, "Invalid mute state (use on, off, or toggle)\n");
 			return 1;
 		}
-		if (!musiccast_zone_mute(mcc, args->zone, args->zone_mute_state)) {
-			fprintf(stderr, "Failed to mute zone!\n");
+		if (do_toggle) {
+			if (!musiccast_zone_mute_get(mcc, zone, &muted)) {
+				fprintf(stderr, "Failed to retrieve zone (%s) mute!\n", zone);
+				return 1;
+			}
+			muted = !muted;
+		}
+		if (!musiccast_zone_mute(mcc, zone, muted)) {
+			fprintf(stderr, "Failed to set zone (%s) mute!\n", zone);
 			return 1;
 		}
 		return 0;
