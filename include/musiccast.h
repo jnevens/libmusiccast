@@ -46,6 +46,18 @@ typedef struct musiccast_zone_volume_info_s {
 	bool range_valid;
 } musiccast_zone_volume_info_t;
 
+typedef struct musiccast_netusb_preset_s {
+	int num;
+	char *input;
+	char *text;
+	bool empty;
+} musiccast_netusb_preset_t;
+
+typedef struct musiccast_netusb_preset_list_s {
+	musiccast_netusb_preset_t *presets;
+	size_t count;
+} musiccast_netusb_preset_list_t;
+
 musiccast_conn_t *musiccast_connect(const char *hostname);
 musiccast_conn_t * musiccast_init(const char *hostname);
 void musiccast_destroy(musiccast_conn_t *mcc);
@@ -71,5 +83,12 @@ bool musiccast_zone_volume_query(musiccast_conn_t *mc, const char *zone,
 				 musiccast_zone_volume_info_t *info);
 bool musiccast_zone_volume_set(musiccast_conn_t *mc, const char *zone, musiccast_zone_volume_action_e action, int volume_step);
 bool musiccast_zone_mute(musiccast_conn_t *mc, const char *zone, bool mute);
+
+/* Net/USB presets (shared across net_radio, server, etc.) */
+musiccast_netusb_preset_list_t *musiccast_netusb_preset_list(musiccast_conn_t *mc);
+void musiccast_netusb_preset_list_free(musiccast_netusb_preset_list_t *list);
+bool musiccast_netusb_preset_recall(musiccast_conn_t *mc, const char *zone, int num);
+bool musiccast_netusb_preset_store(musiccast_conn_t *mc, int num);
+bool musiccast_netusb_preset_clear(musiccast_conn_t *mc, int num);
 
 #endif /* INCLUDE_MUSICCAST_H_ */

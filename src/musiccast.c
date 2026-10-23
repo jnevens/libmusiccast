@@ -521,3 +521,174 @@ bool musiccast_zone_mute(musiccast_conn_t *mc, const char *zone, bool mute)
 	free(path);
 	return rv;
 }
+
+static bool musiccast_response_ok(const char *response)
+{
+	json_object *jobj;
+	json_object *jobj_code;
+	bool ok = false;
+
+	if (!response)
+		return false;
+
+	jobj = json_tokener_parse(response);
+	if (!jobj)
+		return false;
+
+	jobj_code = json_object_object_get(jobj, "response_code");
+	if (jobj_code && json_object_is_type(jobj_code, json_type_int))
+		ok = json_object_get_int(jobj_code) == 0;
+
+	json_object_put(jobj);
+	return ok;
+}
+
+musiccast_netusb_preset_list_t *musiccast_netusb_preset_list(musiccast_conn_t *mc)
+{
+	char *response = NULL;
+	json_object *jobj;
+	json_object *jobj_presets;
+	musiccast_netusb_preset_list_t *list;
+
+	if (!mc)
+		return NULL;
+
+	if (!musiccast_request(mc, "/YamahaExtendedControl/v1/netusb/getPresetInfo", &response))
+		return NULL;
+	if (!response || !musiccast_response_ok(response)) {
+		free(response);
+		return NULL;
+	}
+
+	jobj = json_tokener_parse(response);
+	free(response);
+	if (!jobj)
+		return NULL;
+
+	jobj_presets = json_object_object_get(jobj, "preset_info");
+	if (!jobj_presets || !json_object_is_type(jobj_presets, json_type_array)) {
+		json_object_put(jobj);
+		return NULL;
+	}
+
+	list = calloc(1, sizeof(*list));
+	if (!list) {
+		json_object_put(jobj);
+		return NULL;
+	}
+
+	list->count = (size_t)json_object_array_length(jobj_presets);
+	if (list->count == 0) {
+		json_object_put(jobj);
+		return list;
+	}
+
+	list->presets = calloc(list->count, sizeof(*list->presets));
+	if (!list->presets) {
+		free(list);
+		json_object_put(jobj);
+		return NULL;
+	}
+
+	for (size_t i = 0; i < list->count; i++) {
+		json_object *jobj_entry = json_object_array_get_idx(jobj_presets, (int)i);
+		json_object *jobj_input = json_object_object_get(jobj_entry, "input");
+		json_object *jobj_text = json_object_object_get(jobj_entry, "text");
+		const char *input = NULL;
+		const char *text = "";
+
+		list->presets[i].num = (int)i + 1;
+		if (jobj_input && json_object_is_type(jobj_input, json_type_string))
+			input = json_object_get_string(jobj_input);
+		if (jobj_text && json_object_is_type(jobj_text, json_type_string))
+			text = json_object_get_string(jobj_text);
+
+		if (!input || strcmp(input, "unknown") == 0 || text[0] == '\0') {
+			list->presets[i].empty = true;
+			list->presets[i].input = NULL;
+			list->presets[i].text = NULL;
+		} else {
+			list->presets[i].empty = false;
+			list->presets[i].input = strdup(input);
+			list->presets[i].text = strdup(text);
+		}
+	}
+
+	json_object_put(jobj);
+	return list;
+}
+
+void musiccast_netusb_preset_list_free(musiccast_netusb_preset_list_t *list)
+{
+	if (!list)
+		return;
+
+	for (size_t i = 0; i < list->count; i++) {
+		free(list->presets[i].input);
+		free(list->presets[i].text);
+	}
+	free(list->presets);
+	free(list);
+}
+
+bool musiccast_netusb_preset_recall(musiccast_conn_t *mc, const char *zone, int num)
+{
+	bool rv;
+	char *response = NULL;
+	char *path = NULL;
+
+	if (!mc || !zone || num < 1)
+		return false;
+
+	if (asprintf(&path,
+		     "/YamahaExtendedControl/v1/netusb/recallPreset?zone=%s&num=%d",
+		     zone, num) <= 0)
+		return false;
+
+	rv = musiccast_request(mc, path, &response);
+	if (rv && response)
+		rv = musiccast_response_ok(response);
+	free(response);
+	free(path);
+	return rv;
+}
+
+bool musiccast_netusb_preset_store(musiccast_conn_t *mc, int num)
+{
+	bool rv;
+	char *response = NULL;
+	char *path = NULL;
+
+	if (!mc || num < 1)
+		return false;
+
+	if (asprintf(&path, "/YamahaExtendedControl/v1/netusb/storePreset?num=%d", num) <= 0)
+		return false;
+
+	rv = musiccast_request(mc, path, &response);
+	if (rv && response)
+		rv = musiccast_response_ok(response);
+	free(response);
+	free(path);
+	return rv;
+}
+
+bool musiccast_netusb_preset_clear(musiccast_conn_t *mc, int num)
+{
+	bool rv;
+	char *response = NULL;
+	char *path = NULL;
+
+	if (!mc || num < 1)
+		return false;
+
+	if (asprintf(&path, "/YamahaExtendedControl/v1/netusb/clearPreset?num=%d", num) <= 0)
+		return false;
+
+	rv = musiccast_request(mc, path, &response);
+	if (rv && response)
+		rv = musiccast_response_ok(response);
+	free(response);
+	free(path);
+	return rv;
+}

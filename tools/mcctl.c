@@ -14,7 +14,8 @@ static char doc[] =
 	"Commands: device-info, features, network-status, func-status, location-info,\n"
 	"          status, sound-program-list, power [on|standby|toggle],\n"
 	"          volume [LEVEL|up|down] (LEVEL within min-max from getFeatures;\n"
-	"          use --step with up/down, default 1)\n"
+	"          use --step with up/down, default 1),\n"
+	"          preset list | preset play NUM | preset store NUM | preset clear NUM\n"
 	"          (zone controls: --mute; use -z for zone, default main)";
 
 static char args_doc[] = "detect | COMMAND";
@@ -60,6 +61,17 @@ struct arguments_s {
 	const char *volume_step;
 	const char *power_state;
 	const char *zone;
+	bool preset_cmd;
+	int preset_action;
+	int preset_num;
+};
+
+enum {
+	PRESET_ACTION_NONE = 0,
+	PRESET_ACTION_LIST,
+	PRESET_ACTION_PLAY,
+	PRESET_ACTION_STORE,
+	PRESET_ACTION_CLEAR,
 };
 
 static struct arguments_s arguments = {
@@ -71,7 +83,7 @@ static bool arguments_has_action(const struct arguments_s *args)
 	return args->device_info || args->features || args->network_status
 		|| args->func_status || args->location_info || args->status
 		|| args->sound_program_list || args->power_cmd || args->volume_cmd
-		|| args->zone_mute;
+		|| args->zone_mute || args->preset_cmd;
 }
 
 static bool parse_command(const char *arg, struct arguments_s *args)
@@ -116,7 +128,45 @@ static bool parse_command(const char *arg, struct arguments_s *args)
 		args->volume_cmd = 1;
 		return true;
 	}
+	if (strcmp(arg, "preset") == 0) {
+		args->preset_cmd = 1;
+		return true;
+	}
 	return false;
+}
+
+static bool parse_preset_action(const char *arg, int *action)
+{
+	if (strcmp(arg, "list") == 0) {
+		*action = PRESET_ACTION_LIST;
+		return true;
+	}
+	if (strcmp(arg, "play") == 0 || strcmp(arg, "recall") == 0) {
+		*action = PRESET_ACTION_PLAY;
+		return true;
+	}
+	if (strcmp(arg, "store") == 0) {
+		*action = PRESET_ACTION_STORE;
+		return true;
+	}
+	if (strcmp(arg, "clear") == 0) {
+		*action = PRESET_ACTION_CLEAR;
+		return true;
+	}
+	return false;
+}
+
+static bool parse_preset_num(const char *arg, int *num)
+{
+	char *end;
+	long n;
+
+	n = strtol(arg, &end, 10);
+	if (end == arg || *end != '\0' || n < 1)
+		return false;
+
+	*num = (int)n;
+	return true;
 }
 
 static const char *command_zone(const struct arguments_s *args)
@@ -222,6 +272,51 @@ static void detect_print_results(const musiccast_discover_list_t *found, bool ve
 	}
 }
 
+static void preset_print_list(const musiccast_netusb_preset_list_t *list)
+{
+	size_t w_num = strlen("NUM");
+	size_t w_input = strlen("INPUT");
+	size_t w_text = strlen("TEXT");
+
+	for (size_t i = 0; i < list->count; i++) {
+		const musiccast_netusb_preset_t *p = &list->presets[i];
+		char num_buf[16];
+		const char *input;
+		const char *text;
+
+		snprintf(num_buf, sizeof(num_buf), "%d", p->num);
+		detect_update_width(&w_num, num_buf);
+		if (p->empty) {
+			input = "";
+			text = "";
+		} else {
+			input = p->input ? p->input : "";
+			text = p->text ? p->text : "";
+		}
+		detect_update_width(&w_input, input);
+		detect_update_width(&w_text, text);
+	}
+
+	printf("%-*s  %-*s  %s\n", (int)w_num, "NUM", (int)w_input, "INPUT", "TEXT");
+
+	for (size_t i = 0; i < list->count; i++) {
+		const musiccast_netusb_preset_t *p = &list->presets[i];
+		char num_buf[16];
+		const char *input;
+		const char *text;
+
+		snprintf(num_buf, sizeof(num_buf), "%d", p->num);
+		if (p->empty) {
+			input = "";
+			text = "(empty)";
+		} else {
+			input = p->input ? p->input : "";
+			text = p->text ? p->text : "";
+		}
+		printf("%-*s  %-*s  %s\n", (int)w_num, num_buf, (int)w_input, input, text);
+	}
+}
+
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
 {
 	struct arguments_s *args = state->input;
@@ -286,6 +381,19 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			args->volume_value = arg;
 			break;
 		}
+		if (args->preset_cmd) {
+			if (args->preset_action == PRESET_ACTION_NONE) {
+				if (!parse_preset_action(arg, &args->preset_action))
+					argp_usage(state);
+				break;
+			}
+			if (args->preset_action != PRESET_ACTION_LIST && args->preset_num == 0) {
+				if (!parse_preset_num(arg, &args->preset_num))
+					argp_usage(state);
+				break;
+			}
+			argp_usage(state);
+		}
 		if (!args->hostname) {
 			args->hostname = arg;
 			break;
@@ -299,6 +407,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			argp_usage(state);
 		if (!arguments_has_action(args))
 			argp_usage(state);
+		if (args->preset_cmd) {
+			if (args->preset_action == PRESET_ACTION_NONE)
+				argp_usage(state);
+			if (args->preset_action != PRESET_ACTION_LIST && args->preset_num == 0)
+				argp_usage(state);
+		}
 		break;
 	default:
 		return ARGP_ERR_UNKNOWN;
@@ -472,6 +586,45 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 			return 1;
 		}
 		return 0;
+	}
+	if (args->preset_cmd) {
+		const char *zone = command_zone(args);
+
+		if (args->preset_action == PRESET_ACTION_LIST) {
+			musiccast_netusb_preset_list_t *list = musiccast_netusb_preset_list(mcc);
+
+			if (!list) {
+				fprintf(stderr, "Failed to retrieve Net/USB preset list!\n");
+				return 1;
+			}
+			if (!args->silent)
+				preset_print_list(list);
+			musiccast_netusb_preset_list_free(list);
+			return 0;
+		}
+		if (args->preset_action == PRESET_ACTION_PLAY) {
+			if (!musiccast_netusb_preset_recall(mcc, zone, args->preset_num)) {
+				fprintf(stderr, "Failed to recall preset %d on zone (%s)!\n",
+					args->preset_num, zone);
+				return 1;
+			}
+			return 0;
+		}
+		if (args->preset_action == PRESET_ACTION_STORE) {
+			if (!musiccast_netusb_preset_store(mcc, args->preset_num)) {
+				fprintf(stderr, "Failed to store current content to preset %d!\n",
+					args->preset_num);
+				return 1;
+			}
+			return 0;
+		}
+		if (args->preset_action == PRESET_ACTION_CLEAR) {
+			if (!musiccast_netusb_preset_clear(mcc, args->preset_num)) {
+				fprintf(stderr, "Failed to clear preset %d!\n", args->preset_num);
+				return 1;
+			}
+			return 0;
+		}
 	}
 	return 1;
 }
