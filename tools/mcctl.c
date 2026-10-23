@@ -12,8 +12,10 @@ static char doc[] =
 	"mcctl HOST COMMAND [options]\n"
 	"\n"
 	"Commands: device-info, features, network-status, func-status, location-info,\n"
-	"          status, sound-program-list, power [on|standby|toggle]\n"
-	"          (zone controls: --mute, --volume; use -z for zone, default main)";
+	"          status, sound-program-list, power [on|standby|toggle],\n"
+	"          volume [LEVEL|up|down] (LEVEL within min-max from getFeatures;\n"
+	"          use --step with up/down, default 1)\n"
+	"          (zone controls: --mute; use -z for zone, default main)";
 
 static char args_doc[] = "detect | COMMAND";
 
@@ -31,8 +33,7 @@ static struct argp_option options[] = {
 	{ "status", -6, 0, 0, "Show zone status" },
 	{ "sound-program-list", -7, 0, 0, "Show system sound program list" },
 	{ "mute", -9, "1", 0, "Mute zone (1/0)" },
-	{ "volume", -10, "val", 0, "Set zone value (50/up/down) (step with --step)" },
-	{ "step", -11, "step", 0, "Set volume step (default = 1)" },
+	{ "step", -11, "step", 0, "Step for volume up/down (default = 1)" },
 	{ "zone", 'z', "zone", 0, "Select zone" },
 	{ "timeout", 't', "SECONDS", 0, "Discovery wait time (with detect)" },
 	{ 0 }
@@ -52,11 +53,11 @@ struct arguments_s {
 	bool status;
 	bool sound_program_list;
 	bool power_cmd;
+	bool volume_cmd;
 	bool zone_mute;
 	bool zone_mute_state;
-	bool zone_volume_set;
-	const char *zone_volume;
-	const char *zone_volume_step;
+	const char *volume_value;
+	const char *volume_step;
 	const char *power_state;
 	const char *zone;
 };
@@ -69,8 +70,8 @@ static bool arguments_has_action(const struct arguments_s *args)
 {
 	return args->device_info || args->features || args->network_status
 		|| args->func_status || args->location_info || args->status
-		|| args->sound_program_list || args->power_cmd || args->zone_mute
-		|| args->zone_volume_set;
+		|| args->sound_program_list || args->power_cmd || args->volume_cmd
+		|| args->zone_mute;
 }
 
 static bool parse_command(const char *arg, struct arguments_s *args)
@@ -111,12 +112,40 @@ static bool parse_command(const char *arg, struct arguments_s *args)
 		args->power_cmd = 1;
 		return true;
 	}
+	if (strcmp(arg, "volume") == 0) {
+		args->volume_cmd = 1;
+		return true;
+	}
 	return false;
 }
 
-static const char *power_zone(const struct arguments_s *args)
+static const char *command_zone(const struct arguments_s *args)
 {
 	return args->zone ? args->zone : "main";
+}
+
+static bool parse_volume_set_value(const char *value, musiccast_zone_volume_action_e *action,
+				   int *level_or_step)
+{
+	char *end;
+	long n;
+
+	if (strcmp(value, "up") == 0) {
+		*action = MC_ZONE_VOLUME_SET_UP;
+		return true;
+	}
+	if (strcmp(value, "down") == 0) {
+		*action = MC_ZONE_VOLUME_SET_DOWN;
+		return true;
+	}
+
+	n = strtol(value, &end, 10);
+	if (end == value || *end != '\0')
+		return false;
+
+	*action = MC_ZONE_VOLUME_SET_DIRECT;
+	*level_or_step = (int)n;
+	return true;
 }
 
 static bool parse_power_set_value(const char *state, musiccast_power_state_e *out)
@@ -243,18 +272,18 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		if (strcmp(arg, "0") == 0)
 			args->zone_mute_state = false;
 		break;
-	case -10:
-		args->zone_volume_set = 1;
-		args->zone_volume = arg;
-		break;
 	case -11:
-		args->zone_volume_step = arg;
+		args->volume_step = arg;
 		break;
 	case ARGP_KEY_ARG:
 		if (parse_command(arg, args))
 			break;
 		if (args->power_cmd && !args->power_state) {
 			args->power_state = arg;
+			break;
+		}
+		if (args->volume_cmd && !args->volume_value) {
+			args->volume_value = arg;
 			break;
 		}
 		if (!args->hostname) {
@@ -364,7 +393,7 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 		return 0;
 	}
 	if (args->power_cmd) {
-		const char *zone = power_zone(args);
+		const char *zone = command_zone(args);
 
 		if (!args->power_state) {
 			char *power = musiccast_zone_power_get(mcc, zone);
@@ -390,6 +419,49 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 		}
 		return 0;
 	}
+	if (args->volume_cmd) {
+		const char *zone = command_zone(args);
+
+		if (!args->volume_value) {
+			musiccast_zone_volume_info_t info;
+
+			if (!musiccast_zone_volume_query(mcc, zone, &info)) {
+				fprintf(stderr, "Failed to retrieve zone (%s) volume!\n", zone);
+				return 1;
+			}
+			if (info.range_valid) {
+				printf("%d (%d-%d)\n", info.volume, info.min, info.max);
+				if (args->verbose && info.max_volume > 0)
+					printf("max_volume setup: %d  step: %d\n",
+					       info.max_volume, info.step);
+			} else {
+				printf("%d\n", info.volume);
+			}
+			return 0;
+		}
+
+		musiccast_zone_volume_action_e action;
+		int level_or_step = args->volume_step ? atoi(args->volume_step) : 1;
+		musiccast_zone_volume_info_t info;
+
+		if (!parse_volume_set_value(args->volume_value, &action, &level_or_step)) {
+			fprintf(stderr, "Invalid volume (use LEVEL, up, or down)\n");
+			return 1;
+		}
+		if (action == MC_ZONE_VOLUME_SET_DIRECT
+		    && musiccast_zone_volume_query(mcc, zone, &info)
+		    && info.range_valid
+		    && (level_or_step < info.min || level_or_step > info.max)) {
+			fprintf(stderr, "Volume %d out of range (%d-%d)\n",
+				level_or_step, info.min, info.max);
+			return 1;
+		}
+		if (!musiccast_zone_volume_set(mcc, zone, action, level_or_step)) {
+			fprintf(stderr, "Failed to set zone (%s) volume!\n", zone);
+			return 1;
+		}
+		return 0;
+	}
 	if (args->zone_mute) {
 		if (!args->zone) {
 			fprintf(stderr, "Please select zone (--zone=main)\n");
@@ -397,27 +469,6 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 		}
 		if (!musiccast_zone_mute(mcc, args->zone, args->zone_mute_state)) {
 			fprintf(stderr, "Failed to mute zone!\n");
-			return 1;
-		}
-		return 0;
-	}
-	if (args->zone_volume_set) {
-		int step_volume = args->zone_volume_step ? atoi(args->zone_volume_step) : 1;
-		musiccast_zone_volume_action_e action = MC_ZONE_VOLUME_SET_DIRECT;
-
-		if (strcmp(args->zone_volume, "up") == 0)
-			action = MC_ZONE_VOLUME_SET_UP;
-		else if (strcmp(args->zone_volume, "down") == 0)
-			action = MC_ZONE_VOLUME_SET_DOWN;
-		else
-			step_volume = atoi(args->zone_volume);
-
-		if (!args->zone) {
-			fprintf(stderr, "Please select zone (--zone=main)\n");
-			return 1;
-		}
-		if (!musiccast_zone_volume_set(mcc, args->zone, action, step_volume)) {
-			fprintf(stderr, "Failed to set volume of zone (%s)!\n", args->zone);
 			return 1;
 		}
 		return 0;

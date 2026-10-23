@@ -295,6 +295,127 @@ char *musiccast_zone_power_get(musiccast_conn_t *mc, const char *zone)
 	return power;
 }
 
+static bool musiccast_features_volume_range(musiccast_conn_t *mc, const char *zone,
+					    int *min, int *max, int *step)
+{
+	char *features;
+	json_object *jobj;
+	json_object *jobj_zones;
+	bool found = false;
+
+	features = musiccast_system_features(mc);
+	if (!features)
+		return false;
+
+	jobj = json_tokener_parse(features);
+	free(features);
+	if (!jobj)
+		return false;
+
+	jobj_zones = json_object_object_get(jobj, "zone");
+	if (!jobj_zones || !json_object_is_type(jobj_zones, json_type_array)) {
+		json_object_put(jobj);
+		return false;
+	}
+
+	for (int i = 0; i < json_object_array_length(jobj_zones); i++) {
+		json_object *jobj_zone = json_object_array_get_idx(jobj_zones, i);
+		json_object *jobj_zone_id = json_object_object_get(jobj_zone, "id");
+		json_object *jobj_range_steps;
+		const char *zone_id;
+
+		if (!jobj_zone_id || !json_object_is_type(jobj_zone_id, json_type_string))
+			continue;
+
+		zone_id = json_object_get_string(jobj_zone_id);
+		if (strcmp(zone_id, zone) != 0)
+			continue;
+
+		jobj_range_steps = json_object_object_get(jobj_zone, "range_step");
+		if (!jobj_range_steps || !json_object_is_type(jobj_range_steps, json_type_array))
+			break;
+
+		for (int j = 0; j < json_object_array_length(jobj_range_steps); j++) {
+			json_object *jobj_step = json_object_array_get_idx(jobj_range_steps, j);
+			json_object *jobj_step_id = json_object_object_get(jobj_step, "id");
+
+			if (!jobj_step_id || !json_object_is_type(jobj_step_id, json_type_string))
+				continue;
+			if (strcmp(json_object_get_string(jobj_step_id), "volume") != 0)
+				continue;
+
+			*min = (int)json_object_get_double(json_object_object_get(jobj_step, "min"));
+			*max = (int)json_object_get_double(json_object_object_get(jobj_step, "max"));
+			*step = (int)json_object_get_double(json_object_object_get(jobj_step, "step"));
+			found = true;
+			break;
+		}
+		break;
+	}
+
+	json_object_put(jobj);
+	return found;
+}
+
+bool musiccast_zone_volume_query(musiccast_conn_t *mc, const char *zone,
+				 musiccast_zone_volume_info_t *info)
+{
+	char *status;
+	json_object *jobj;
+	json_object *jobj_volume;
+	json_object *jobj_max_volume;
+	int min = 0, max = 0, step = 0;
+
+	if (!info)
+		return false;
+
+	memset(info, 0, sizeof(*info));
+
+	status = musiccast_zone_status(mc, zone);
+	if (!status)
+		return false;
+
+	jobj = json_tokener_parse(status);
+	free(status);
+	if (!jobj)
+		return false;
+
+	jobj_volume = json_object_object_get(jobj, "volume");
+	if (!jobj_volume || !json_object_is_type(jobj_volume, json_type_int)) {
+		json_object_put(jobj);
+		return false;
+	}
+
+	info->volume = json_object_get_int(jobj_volume);
+	jobj_max_volume = json_object_object_get(jobj, "max_volume");
+	if (jobj_max_volume && json_object_is_type(jobj_max_volume, json_type_int))
+		info->max_volume = json_object_get_int(jobj_max_volume);
+
+	json_object_put(jobj);
+
+	if (musiccast_features_volume_range(mc, zone, &min, &max, &step)) {
+		info->min = min;
+		info->max = max;
+		info->step = step;
+		info->range_valid = true;
+	}
+
+	return true;
+}
+
+bool musiccast_zone_volume_get(musiccast_conn_t *mc, const char *zone, int *volume)
+{
+	musiccast_zone_volume_info_t info;
+
+	if (!volume)
+		return false;
+	if (!musiccast_zone_volume_query(mc, zone, &info))
+		return false;
+
+	*volume = info.volume;
+	return true;
+}
+
 char *musiccast_zone_status(musiccast_conn_t *mc, const char *zone)
 {
 	char *response = NULL;
