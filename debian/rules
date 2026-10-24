@@ -9,6 +9,7 @@ export DH_VERBOSE = 1
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		--disable-tests \
-		--disable-valgrind
+		--disable-valgrind \
+		--disable-werror
 
 override_dh_auto_test:

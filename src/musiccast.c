@@ -33,8 +33,7 @@ struct in_addr hostname_to_ip(const char * hostname)
 	int i;
 
 	if ((he = gethostbyname(hostname)) == NULL) {
-		// get the host info
-		fprintf(stderr, "gethostbyname: %m");
+		fprintf(stderr, "gethostbyname: %s\n", strerror(errno));
 		return ip;
 	}
 
@@ -104,7 +103,7 @@ musiccast_conn_t * musiccast_init(const char *hostname)
 	free(system_features);
 
 	// get zone info
-	for (int i = 0; i < mcc->device.zone_num; i++) {
+	for (size_t i = 0; i < mcc->device.zone_num; i++) {
 		const char *zone_name = mcc->device.zone[i].id;
 		char *zone_state = musiccast_zone_status(mcc, zone_name);
 		if (!zone_state) {
@@ -113,7 +112,7 @@ musiccast_conn_t * musiccast_init(const char *hostname)
 			return NULL;
 		}
 
-		if (!musiccast_zone_status_parse(mcc, i, zone_state)) {
+		if (!musiccast_zone_status_parse(mcc, (int)i, zone_state)) {
 			fprintf(stderr, "Failed to parse zone status (%s)\n", zone_name);
 			musiccast_destroy(mcc);
 			return NULL;
@@ -191,14 +190,14 @@ static bool musiccast_system_features_parse(musiccast_conn_t *mcc, const char *s
 	json_object *jobj_system_zone_num = json_object_object_get(jobj_system, "zone_num");
 	mcc->device.zone_num = json_object_get_int(jobj_system_zone_num);
 	json_object *jobj_zones = json_object_object_get(jobj, "zone");
-	for (int i = 0; i < mcc->device.zone_num; i++) {
-		json_object *jobj_zone = json_object_array_get_idx(jobj_zones, i);
+	for (size_t i = 0; i < mcc->device.zone_num; i++) {
+		json_object *jobj_zone = json_object_array_get_idx(jobj_zones, (int)i);
 		json_object *jobj_zone_id = json_object_object_get(jobj_zone, "id");
 		mcc->device.zone[i].id = strdup(json_object_get_string(jobj_zone_id));
 		json_object *jobj_zone_range_steps = json_object_object_get(jobj_zone, "range_step");
-		int range_steps_count = json_object_array_length(jobj_zone_range_steps);
-		for (int j = 0; j < range_steps_count; j++) {
-			json_object *jobj_range_step = json_object_array_get_idx(jobj_zone_range_steps, j);
+		size_t range_steps_count = (size_t)json_object_array_length(jobj_zone_range_steps);
+		for (size_t j = 0; j < range_steps_count; j++) {
+			json_object *jobj_range_step = json_object_array_get_idx(jobj_zone_range_steps, (int)j);
 			json_object *jobj_range_step_id = json_object_object_get(jobj_range_step, "id");
 			mcc->device.zone[i].range_steps[j].id = strdup(json_object_get_string(jobj_range_step_id));
 			json_object *jobj_range_step_min = json_object_object_get(jobj_range_step, "min");
@@ -395,8 +394,8 @@ static bool musiccast_features_volume_range(musiccast_conn_t *mc, const char *zo
 		return false;
 	}
 
-	for (int i = 0; i < json_object_array_length(jobj_zones); i++) {
-		json_object *jobj_zone = json_object_array_get_idx(jobj_zones, i);
+	for (size_t i = 0; i < (size_t)json_object_array_length(jobj_zones); i++) {
+		json_object *jobj_zone = json_object_array_get_idx(jobj_zones, (int)i);
 		json_object *jobj_zone_id = json_object_object_get(jobj_zone, "id");
 		json_object *jobj_range_steps;
 		const char *zone_id;
@@ -412,8 +411,8 @@ static bool musiccast_features_volume_range(musiccast_conn_t *mc, const char *zo
 		if (!jobj_range_steps || !json_object_is_type(jobj_range_steps, json_type_array))
 			break;
 
-		for (int j = 0; j < json_object_array_length(jobj_range_steps); j++) {
-			json_object *jobj_step = json_object_array_get_idx(jobj_range_steps, j);
+		for (size_t j = 0; j < (size_t)json_object_array_length(jobj_range_steps); j++) {
+			json_object *jobj_step = json_object_array_get_idx(jobj_range_steps, (int)j);
 			json_object *jobj_step_id = json_object_object_get(jobj_step, "id");
 
 			if (!jobj_step_id || !json_object_is_type(jobj_step_id, json_type_string))
@@ -564,11 +563,14 @@ bool musiccast_zone_volume_set(musiccast_conn_t *mc, const char *zone, musiccast
 		return false;
 
 	if (action == MC_ZONE_VOLUME_SET_DIRECT) {
-		asprintf(&path, "/YamahaExtendedControl/v1/%s/setVolume?volume=%d", zone, volume_step);
+		if (asprintf(&path, "/YamahaExtendedControl/v1/%s/setVolume?volume=%d", zone, volume_step) < 0)
+			return false;
 	} else if (action == MC_ZONE_VOLUME_SET_UP) {
-		asprintf(&path, "/YamahaExtendedControl/v1/%s/setVolume?volume=up&step=%d", zone, volume_step);
+		if (asprintf(&path, "/YamahaExtendedControl/v1/%s/setVolume?volume=up&step=%d", zone, volume_step) < 0)
+			return false;
 	} else if (action == MC_ZONE_VOLUME_SET_DOWN) {
-		asprintf(&path, "/YamahaExtendedControl/v1/%s/setVolume?volume=down&step=%d", zone, volume_step);
+		if (asprintf(&path, "/YamahaExtendedControl/v1/%s/setVolume?volume=down&step=%d", zone, volume_step) < 0)
+			return false;
 	} else {
 		return false;
 	}
@@ -620,7 +622,8 @@ bool musiccast_zone_mute(musiccast_conn_t *mc, const char *zone, bool mute)
 	if (!zone)
 		return false;
 
-	asprintf(&path, "/YamahaExtendedControl/v1/%s/setMute?enable=%s", zone, action);
+	if (asprintf(&path, "/YamahaExtendedControl/v1/%s/setMute?enable=%s", zone, action) < 0)
+		return false;
 
 	rv = musiccast_request(mc, path, &response);
 	free(response);

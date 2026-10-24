@@ -52,7 +52,8 @@ bool musiccast_request(musiccast_conn_t *mcc, const char *url, char **response)
 		return false;
 	}
 
-	asprintf(&url_full, "http://%s%s%s", inet_ntoa(mcc->ip), ((url[0] == '/') ? "" : "/"), url);
+	if (asprintf(&url_full, "http://%s%s%s", inet_ntoa(mcc->ip), ((url[0] == '/') ? "" : "/"), url) < 0)
+		goto cleanup;
 
 	curl_easy_setopt(curl, CURLOPT_URL, url_full);
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);

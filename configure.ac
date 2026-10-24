@@ -25,6 +25,32 @@ LT_PROG_RC
 
 AC_PROG_CC
 
+# Prefer ISO C23 (GNU dialect for asprintf, _GNU_SOURCE, etc.), with fallbacks.
+musiccast_cv_c_std=unknown
+for std in gnu23 c23 gnu2x c2x gnu17 c17; do
+	AC_MSG_CHECKING([whether $CC accepts -std=$std])
+	ac_musiccast_save_CFLAGS=$CFLAGS
+	CFLAGS="-std=$std $ac_musiccast_save_CFLAGS"
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([int x;], [x = 0;])],
+		[musiccast_cv_c_std=$std
+		 CFLAGS=$ac_musiccast_save_CFLAGS
+		 AC_MSG_RESULT([yes])
+		 break],
+		[CFLAGS=$ac_musiccast_save_CFLAGS
+		 AC_MSG_RESULT([no])])
+done
+AS_IF([test "x$musiccast_cv_c_std" = xunknown],
+	[AC_MSG_ERROR([$CC does not accept -std=gnu23/c23/c2x/c17])])
+AC_MSG_NOTICE([using -std=$musiccast_cv_c_std])
+CFLAGS="$CFLAGS -std=$musiccast_cv_c_std -pedantic -Wall -Wextra"
+
+AC_ARG_ENABLE([werror],
+	[AS_HELP_STRING([--disable-werror],
+		[do not treat compiler warnings as errors @<:@default: werror on@:>@])],
+	[], [enable_werror=yes])
+AS_IF([test "x$enable_werror" = xyes],
+	[CFLAGS="$CFLAGS -Werror"])
+
 PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES([LIBCURL], [libcurl >= 7.0])
 PKG_CHECK_MODULES([JSONC], [json-c >= 0.13])

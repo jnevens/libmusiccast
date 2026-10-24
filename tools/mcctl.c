@@ -49,14 +49,14 @@ static char doc[] =
 static char args_doc[] = "detect | help | COMMAND";
 
 static struct argp_option options[] = {
-	{ "address", 'a', "HOST", 0, "Device IP or hostname" },
-	{ "zone", 'z', "ZONE", 0, "Zone for zone commands (default: main)" },
-	{ "verbose", 'v', 0, 0, "Verbose output" },
-	{ "quiet", 'q', 0, 0, "Suppress stdout" },
-	{ "silent", 's', 0, OPTION_ALIAS },
-	{ "timeout", 't', "SEC", 0, "Discovery wait in seconds (default: 3)" },
-	{ "step", OPT_VOLUME_STEP, "N", 0, "Volume step for up/down (default: 1)" },
-	{ 0 }
+	{ .name = "address", .key = 'a', .arg = "HOST", .doc = "Device IP or hostname" },
+	{ .name = "zone", .key = 'z', .arg = "ZONE", .doc = "Zone for zone commands (default: main)" },
+	{ .name = "verbose", .key = 'v', .doc = "Verbose output" },
+	{ .name = "quiet", .key = 'q', .doc = "Suppress stdout" },
+	{ .name = "silent", .key = 's', .flags = OPTION_ALIAS },
+	{ .name = "timeout", .key = 't', .arg = "SEC", .doc = "Discovery wait in seconds (default: 3)" },
+	{ .name = "step", .key = OPT_VOLUME_STEP, .arg = "N", .doc = "Volume step for up/down (default: 1)" },
+	{ }
 };
 
 struct arguments_s {
@@ -469,7 +469,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	return 0;
 }
 
-static struct argp argp = { options, parse_opt, args_doc, doc };
+static struct argp argp = {
+	.options = options,
+	.parser = parse_opt,
+	.args_doc = args_doc,
+	.doc = doc,
+};
 
 static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 {
