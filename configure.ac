@@ -66,6 +66,7 @@ m4_ifset([dc_version_suffix],[
 AC_CONFIG_FILES([
 	libmusiccast.pc
 	include/version.h
+	tools/mcctl.1
 	Makefile
 	include/Makefile
 	src/Makefile

@@ -1,0 +1,191 @@
+.\" libmusiccast — mcctl(1)
+.TH MCCTL 1 "@VERSION@" "libmusiccast" "Yamaha MusicCast control"
+.SH NAME
+mcctl \- control Yamaha MusicCast devices over the network
+.SH SYNOPSIS
+.B mcctl
+[\fIOPTION\fR...]
+.B detect
+[\fIOPTION\fR...]
+.PP
+.B mcctl
+.B help
+.PP
+.B mcctl
+[\fIOPTION\fR...]
+.B \-a
+.I HOST
+[\fIOPTION\fR...]
+.I COMMAND
+[\fIARGS\fR...]
+.PP
+.B mcctl
+.I HOST
+[\fIOPTION\fR...]
+.I COMMAND
+[\fIARGS\fR...]
+.SH DESCRIPTION
+.B mcctl
+talks to Yamaha MusicCast speakers and receivers using the Yamaha Extended
+Control (YXC) HTTP API on the local network.
+.PP
+Use
+.B detect
+to find devices via SSDP.
+All other commands need a device
+.IR HOST
+(IP address or hostname), either as the first argument or with
+.BR \-a .
+.SH OPTIONS
+.TP
+.BR \-a ", " \-\-address= HOST
+Device IP address or hostname.
+.TP
+.BR \-z ", " \-\-zone= ZONE
+Zone for zone commands (default:
+.IR main ).
+.TP
+.BR \-t ", " \-\-timeout= SEC
+.SSD discovery wait time in seconds (default: 3).
+.TP
+.BR \-v ", " \-\-verbose
+Verbose output (e.g. show device ID in
+.BR detect ).
+.TP
+.BR \-q ", " \-\-quiet ", " \-s ", " \-\-silent
+Suppress stdout.
+.TP
+.BR \-\-step= N
+Step size for
+.B volume up
+and
+.B volume down
+(default: 1).
+.TP
+.B \-\-version
+Print version and exit.
+.TP
+.B \-\-help
+Print usage and exit (same as the
+.B help
+command).
+.SH COMMANDS
+.SS Without a device address
+.TP
+.B detect
+Search the LAN for MusicCast devices (SSDP).
+.TP
+.B help
+Show usage.
+.SS System queries
+.TP
+.B device-info
+Device model, IDs, API version (\fIgetDeviceInfo\fR).
+.TP
+.B features
+Capabilities and zone layout (\fIgetFeatures\fR).
+.TP
+.B zones
+List zone IDs from
+.BR features .
+.TP
+.B network-status
+Network configuration (\fIgetNetworkStatus\fR).
+.TP
+.B func-status
+Function status (\fIgetFuncStatus\fR).
+.TP
+.B location-info
+Location / grouping (\fIgetLocationInfo\fR).
+.TP
+.B sound-program-list
+Available sound programs (\fIgetSoundProgramList\fR).
+.SS Zone commands
+Zone is selected with
+.BR \-z ;
+default is
+.IR main .
+.TP
+.B status
+Zone status as JSON (\fIgetStatus\fR).
+.TP
+.B power
+Print power state (\fIon\fR or \fIstandby\fR).
+.TP
+.B power on\fR|\fBstandby\fR|\fBtoggle
+Set power.
+.TP
+.B volume
+Print current volume (and range when available).
+.TP
+.B volume \fIN\fR|\fBup\fR|\fBdown
+Set volume or step up/down (use
+.B \-\-step
+with up/down).
+.TP
+.B mute
+Print mute state (\fIon\fR = muted, \fIoff\fR = unmuted).
+.TP
+.B mute on\fR|\fBoff\fR|\fBtoggle
+Set mute.
+.SS Net/USB presets
+Presets are shared across Net/USB sources (e.g. net radio, server).
+.TP
+.B preset list
+List preset slots.
+.TP
+.B preset play \fIN
+.TP
+.B preset recall \fIN
+Recall preset
+.IR N
+(switches input as needed).
+.TP
+.B preset store \fIN
+Save currently playing Net/USB content to preset
+.IR N .
+.TP
+.B preset clear \fIN
+Clear preset
+.IR N .
+.SH EXAMPLES
+.TP
+Discover devices:
+.RS
+.EX
+mcctl detect
+.EE
+.RE
+.TP
+Power and volume on the main zone:
+.RS
+.EX
+mcctl -a 192.168.1.50 power on
+mcctl -a living-room.local volume 45
+mcctl -a living-room.local volume up --step 5
+.EE
+.RE
+.TP
+Play Net/USB preset 3 on zone 2:
+.RS
+.EX
+mcctl -a 192.168.1.50 -z zone2 preset play 3
+.EE
+.RE
+.SH EXIT STATUS
+0 on success, non-zero on error.
+.SH FILES
+.TP
+.I /usr/include/musiccast.h
+Library public API (libmusiccast).
+.SH SEE ALSO
+.BR pkg-config (1)
+for
+.BR libmusiccast .
+.PP
+Yamaha Extended Control API specifications (YXC Basic/Advanced).
+.SH AUTHOR
+Jasper Nevens
+.SH COPYRIGHT
+Copyright \(co 2015\-2026 Jasper Nevens.
+License LGPL-2.1+.

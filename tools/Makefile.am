@@ -4,6 +4,9 @@ AM_CPPFLAGS = \
 
 sbin_PROGRAMS = mcctl
 
+nodist_man1_MANS = mcctl.1
+EXTRA_DIST = mcctl.1.in
+
 mcctl_SOURCES = mcctl.c
 
 mcctl_LDADD = \

@@ -28,6 +28,7 @@
 *.x86_64
 *.hex
 tools/mcctl
+tools/mcctl.1
 
 # extra
 Makefile
