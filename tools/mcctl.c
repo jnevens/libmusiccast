@@ -17,10 +17,10 @@ static char doc[] =
 	"          status, sound-program-list, power [on|standby|toggle],\n"
 	"          volume [LEVEL|up|down] (LEVEL within min-max from getFeatures;\n"
 	"          use --step with up/down, default 1), mute [on|off|toggle],\n"
-	"          preset list | preset play NUM | preset store NUM | preset clear NUM\n"
-	"          (use -z for zone on zone commands, default main)";
+	"          preset list | preset play NUM | preset store NUM | preset clear NUM,\n"
+	"          help (use -z for zone on zone commands, default main)";
 
-static char args_doc[] = "detect | COMMAND";
+static char args_doc[] = "detect | help | COMMAND";
 
 static struct argp_option options[] = {
 	{ "address", 'a', "HOST", 0, "MusicCast device address (IP or hostname)" },
@@ -46,6 +46,7 @@ struct arguments_s {
 	bool silent;
 	bool verbose;
 	bool detect;
+	bool help_cmd;
 	unsigned int detect_timeout_sec;
 	bool device_info;
 	bool features;
@@ -82,16 +83,21 @@ static struct arguments_s arguments = {
 
 static bool arguments_has_action(const struct arguments_s *args)
 {
-	return args->device_info || args->features || args->network_status
-		|| args->func_status || args->location_info || args->status
-		|| args->sound_program_list || args->zones_cmd || args->power_cmd
-		|| args->volume_cmd || args->mute_cmd || args->preset_cmd;
+	return args->help_cmd || args->device_info || args->features
+		|| args->network_status || args->func_status || args->location_info
+		|| args->status || args->sound_program_list || args->zones_cmd
+		|| args->power_cmd || args->volume_cmd || args->mute_cmd
+		|| args->preset_cmd;
 }
 
 static bool parse_command(const char *arg, struct arguments_s *args)
 {
 	if (strcmp(arg, "detect") == 0) {
 		args->detect = 1;
+		return true;
+	}
+	if (strcmp(arg, "help") == 0) {
+		args->help_cmd = 1;
 		return true;
 	}
 	if (strcmp(arg, "device-info") == 0) {
@@ -447,7 +453,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		argp_usage(state);
 		break;
 	case ARGP_KEY_END:
-		if (args->detect)
+		if (args->detect || args->help_cmd)
 			break;
 		if (!args->hostname)
 			argp_usage(state);
@@ -709,6 +715,11 @@ int main(int argc, char *argv[])
 	int rv;
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+
+	if (arguments.help_cmd) {
+		argp_help(&argp, stdout, ARGP_HELP_STD_HELP, argv[0]);
+		return 0;
+	}
 
 	if (arguments.detect) {
 		musiccast_discover_list_t *found;
