@@ -1,7 +1,6 @@
-# Build, unit tests, and line coverage (HTML report + summary in job artifacts).
+# CI: tests/coverage, release tarball (make distcheck), and .deb packages.
 #
-# Download artifacts from the job: coverage/ (genhtml), coverage.info,
-# coverage-summary.txt, tests/test-suite.log
+# Artifacts: coverage/, release/*.tar.gz, deb/*.deb
 
 stages:
   - test
@@ -53,6 +52,28 @@ build-test-coverage:
       coverage_report:
         coverage_format: cobertura
         path: coverage/cobertura.xml
+
+# Verify Makefile.am EXTRA_DIST, VPATH build, install/uninstall; ship tarball.
+distcheck:
+  extends: .test_image
+  stage: build
+  variables:
+    APT_PACKAGES: >-
+      autoconf automake libtool pkg-config
+      build-essential
+      libcurl4-openssl-dev libjson-c-dev
+  script:
+    - autoreconf -fi
+    - ./configure --disable-valgrind
+    - make distcheck
+    - mkdir -p "${CI_PROJECT_DIR}/release"
+    - mv libmusiccast-*.tar.gz "${CI_PROJECT_DIR}/release/"
+  artifacts:
+    when: always
+    expire_in: 30 days
+    expose_as: "source tarball"
+    paths:
+      - release/
 
 # Binary packages (library, -dev, mcctl).
 build-deb:
