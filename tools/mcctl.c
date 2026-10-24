@@ -8,36 +8,54 @@
 
 const char *argp_program_version = MUSICCAST_VERSION;
 
+enum {
+	OPT_VOLUME_STEP = 0x100,
+};
+
 static char doc[] =
-	"mcctl detect [options]\n"
-	"mcctl -a HOST COMMAND [options]\n"
-	"mcctl HOST COMMAND [options]\n"
+	"Control Yamaha MusicCast devices (YXC HTTP API).\n"
 	"\n"
-	"Commands: device-info, features, zones, network-status, func-status, location-info,\n"
-	"          status, sound-program-list, power [on|standby|toggle],\n"
-	"          volume [LEVEL|up|down] (LEVEL within min-max from getFeatures;\n"
-	"          use --step with up/down, default 1), mute [on|off|toggle],\n"
-	"          preset list | preset play NUM | preset store NUM | preset clear NUM,\n"
-	"          help (use -z for zone on zone commands, default main)";
+	"Usage:\n"
+	"  mcctl detect [-t SEC] [-v]\n"
+	"  mcctl help\n"
+	"  mcctl -a HOST [-z ZONE] COMMAND ...\n"
+	"  mcctl HOST [-z ZONE] COMMAND ...\n"
+	"\n"
+	"No device address:\n"
+	"  detect              SSDP discovery on the LAN\n"
+	"  help                Show this help\n"
+	"\n"
+	"System queries:\n"
+	"  device-info         getDeviceInfo\n"
+	"  features            getFeatures\n"
+	"  zones               Zone IDs from getFeatures\n"
+	"  network-status      getNetworkStatus\n"
+	"  func-status         getFuncStatus\n"
+	"  location-info       getLocationInfo\n"
+	"  sound-program-list  getSoundProgramList\n"
+	"\n"
+	"Zone commands (-z ZONE, default main):\n"
+	"  status              getStatus (JSON)\n"
+	"  power [on|standby|toggle]\n"
+	"  volume [LEVEL|up|down]  (--step for up/down)\n"
+	"  mute [on|off|toggle]\n"
+	"\n"
+	"Net/USB presets:\n"
+	"  preset list\n"
+	"  preset play NUM     (alias: recall)\n"
+	"  preset store NUM\n"
+	"  preset clear NUM";
 
 static char args_doc[] = "detect | help | COMMAND";
 
 static struct argp_option options[] = {
-	{ "address", 'a', "HOST", 0, "MusicCast device address (IP or hostname)" },
-	{ "verbose", 'v', 0, 0, "Produce verbose output" },
-	{ "quiet", 'q', 0, 0, "Don't produce any output" },
+	{ "address", 'a', "HOST", 0, "Device IP or hostname" },
+	{ "zone", 'z', "ZONE", 0, "Zone for zone commands (default: main)" },
+	{ "verbose", 'v', 0, 0, "Verbose output" },
+	{ "quiet", 'q', 0, 0, "Suppress stdout" },
 	{ "silent", 's', 0, OPTION_ALIAS },
-	{0, 0, 0, 0, "Request system information (flags or COMMAND)"},
-	{ "device-info", -1, 0, 0, "Show system device info" },
-	{ "features", -2, 0, 0, "Show system features" },
-	{ "network-status", -3, 0, 0, "Show system network status" },
-	{ "func-status", -4, 0, 0, "Show system func status" },
-	{ "location-info", -5, 0, 0, "Show system location info" },
-	{ "status", -6, 0, 0, "Show zone status" },
-	{ "sound-program-list", -7, 0, 0, "Show system sound program list" },
-	{ "step", -11, "step", 0, "Step for volume up/down (default = 1)" },
-	{ "zone", 'z', "zone", 0, "Select zone" },
-	{ "timeout", 't', "SECONDS", 0, "Discovery wait time (with detect)" },
+	{ "timeout", 't', "SEC", 0, "Discovery wait in seconds (default: 3)" },
+	{ "step", OPT_VOLUME_STEP, "N", 0, "Volume step for up/down (default: 1)" },
 	{ 0 }
 };
 
@@ -394,28 +412,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		if (args->detect_timeout_sec == 0)
 			args->detect_timeout_sec = 3;
 		break;
-	case -1:
-		args->device_info = 1;
-		break;
-	case -2:
-		args->features = 1;
-		break;
-	case -3:
-		args->network_status = 1;
-		break;
-	case -4:
-		args->func_status = 1;
-		break;
-	case -5:
-		args->location_info = 1;
-		break;
-	case -6:
-		args->status = 1;
-		break;
-	case -7:
-		args->sound_program_list = 1;
-		break;
-	case -11:
+	case OPT_VOLUME_STEP:
 		args->volume_step = arg;
 		break;
 	case ARGP_KEY_ARG:
