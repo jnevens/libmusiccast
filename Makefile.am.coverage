@@ -8,8 +8,8 @@ COVERAGE_REPORT_DIR = $(top_builddir)/coverage
         clean-coverage-report clean-coverage clean-coverage-hook-for-clean-local
 
 coverage-requirement-check:
-	@if test "x$(ENABLE_COVERAGE)" = "xno"; then \
-		echo "Coverage feature is disabled. Please execute configure with --enable-gcov option."; \
+	@if test "x$(ENABLE_GCOV)" != "xyes"; then \
+		echo "Coverage is disabled. Re-run configure with --enable-gcov."; \
 		exit 1; \
 	fi
 

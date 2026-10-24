@@ -27,7 +27,14 @@ AC_DEFUN([AC_TDD_GCOV],
 		 [enable coverage testing with gcov]),
   [use_gcov=yes], [use_gcov=no])
 
-  AM_CONDITIONAL(HAVE_GCOV, test "x$use_gcov" = "xyes")
+  AM_CONDITIONAL([HAVE_GCOV], [test "x$use_gcov" = "xyes"])
+
+  AS_IF([test "x$use_gcov" = "xyes"], [
+    ENABLE_GCOV=yes
+  ], [
+    ENABLE_GCOV=no
+  ])
+  AC_SUBST([ENABLE_GCOV])
 
   if test "x$use_gcov" = "xyes"; then
   # we need gcc:

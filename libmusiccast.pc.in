@@ -6,5 +6,6 @@ includedir=@includedir@
 Name: libmusiccast
 Description: A library to control Yamaha MusicCast devices
 Version: @VERSION@
+Requires: libcurl json-c
 Libs: -L${libdir} -lmusiccast
 Cflags: -I${includedir}
