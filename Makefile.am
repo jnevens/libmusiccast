@@ -19,7 +19,14 @@ EXTRA_DIST = \
 	include/version.h.in \
 	m4/gcov.m4 \
 	m4/valgrind.m4 \
-	libmusiccast.pc.in
+	libmusiccast.pc.in \
+	misc/cppcheck-env.h \
+	misc/cppcheck-suppressions.txt \
+	scripts/cppcheck.sh
+
+cppcheck:
+	@chmod +x scripts/cppcheck.sh
+	@./scripts/cppcheck.sh
 
 if HAVE_GCOV
 include Makefile.am.coverage

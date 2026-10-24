@@ -1,0 +1,11 @@
+# False positives: parsers return bool; cppcheck does not see all failure paths.
+knownConditionTrueFalse:src/musiccast.c
+
+# curl write callback signature must match CURLOPT_WRITEFUNCTION.
+constParameterCallback:src/request.c
+
+# curl_easy_setopt is variadic; cppcheck mis-parses CURLOPT_* long constants.
+sizeofwithnumericparameter:src/request.c
+
+# libcurl CURLOPT typecheck macro uses a dummy _curl_opt variable.
+legacyUninitvar:src/request.c

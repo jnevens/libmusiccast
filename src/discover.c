@@ -28,6 +28,24 @@
 #define MUSICCAST_DISCOVER_MAX_CANDIDATES		64
 #define MUSICCAST_SSDP_RECV_BUF			8192
 
+static bool timeval_after(const struct timeval *a, const struct timeval *b)
+{
+	if (a->tv_sec != b->tv_sec)
+		return a->tv_sec > b->tv_sec;
+	return a->tv_usec > b->tv_usec;
+}
+
+static void timeval_sub(const struct timeval *end, const struct timeval *now,
+			struct timeval *out)
+{
+	out->tv_sec = end->tv_sec - now->tv_sec;
+	out->tv_usec = end->tv_usec - now->tv_usec;
+	if (out->tv_usec < 0) {
+		out->tv_sec--;
+		out->tv_usec += 1000000;
+	}
+}
+
 static const char musiccast_ssdp_msearch[] =
 	"M-SEARCH * HTTP/1.1\r\n"
 	"HOST: 239.255.255.250:1900\r\n"
@@ -132,10 +150,10 @@ static void ssdp_collect_candidates(int sock, unsigned int timeout_ms,
 		ssize_t n;
 
 		gettimeofday(&now, NULL);
-		if (timercmp(&now, &end, >))
+		if (timeval_after(&now, &end))
 			break;
 
-		timersub(&end, &now, &tv);
+		timeval_sub(&end, &now, &tv);
 		FD_ZERO(&fds);
 		FD_SET(sock, &fds);
 		if (select(sock + 1, &fds, NULL, NULL, &tv) <= 0)

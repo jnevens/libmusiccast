@@ -1,6 +1,6 @@
-# CI: tests/coverage, release tarball (make distcheck), and .deb packages.
+# CI: cppcheck, tests/coverage, release tarball (make distcheck), and .deb packages.
 #
-# Artifacts: coverage/, release/*.tar.gz, deb/*.deb
+# Artifacts: cppcheck.log, coverage/, release/*.tar.gz, deb/*.deb
 
 stages:
   - test
@@ -24,6 +24,26 @@ variables:
     - export DEBIAN_FRONTEND=noninteractive
     - apt-get update -qq
     - apt-get install -y -qq ${APT_PACKAGES}
+
+cppcheck:
+  extends: .test_image
+  stage: test
+  variables:
+    APT_PACKAGES: >-
+      autoconf automake libtool pkg-config
+      build-essential
+      libcurl4-openssl-dev libjson-c-dev
+      cppcheck
+  script:
+    - autoreconf -fi
+    - ./configure --disable-valgrind
+    - ./scripts/cppcheck.sh 2>&1 | tee cppcheck.log
+  artifacts:
+    when: always
+    expire_in: 30 days
+    expose_as: "cppcheck report"
+    paths:
+      - cppcheck.log
 
 build-test-coverage:
   extends: .test_image

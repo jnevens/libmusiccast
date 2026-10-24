@@ -85,6 +85,8 @@ debian/libmusiccast-dev/
 debian/libmusiccast-tools/
 debian/tmp/
 
+cppcheck.log
+
 #coverage
 coverage.info
 coverage-summary.txt
