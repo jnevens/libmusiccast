@@ -1,1 +1,3 @@
 usr/lib/*/libmusiccast.so.*
+usr/sbin/mcctl
+usr/share/man/man1/mcctl.1*

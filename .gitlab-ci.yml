@@ -108,7 +108,7 @@ build-deb:
   script:
     - dpkg-buildpackage -b -us -uc
     - mkdir -p "${CI_PROJECT_DIR}/deb"
-    - mv ../libmusiccast0_*.deb ../libmusiccast-dev_*.deb ../libmusiccast-tools_*.deb "${CI_PROJECT_DIR}/deb/"
+    - mv ../libmusiccast0_*.deb ../libmusiccast-dev_*.deb "${CI_PROJECT_DIR}/deb/"
   artifacts:
     when: always
     expire_in: 30 days

@@ -19,9 +19,12 @@ Package: libmusiccast0
 Architecture: any
 Multi-Arch: same
 Depends: ${misc:Depends}, ${shlibs:Depends}
-Description: Yamaha MusicCast device control library
+Description: Yamaha MusicCast device control library and mcctl CLI
  Shared library for discovering and controlling Yamaha MusicCast
  speakers and receivers over the local network (YXC HTTP API).
+ .
+ This package also installs mcctl, a small command-line tool for
+ discovery, status queries, zone power/volume/mute, and Net/USB presets.
 
 Package: libmusiccast-dev
 Section: libdevel
@@ -29,13 +32,4 @@ Architecture: any
 Multi-Arch: same
 Depends: libmusiccast0 (= ${binary:Version}), ${misc:Depends}
 Description: development files for libmusiccast
- Headers and pkg-config file for libmusiccast.
-
-Package: libmusiccast-tools
-Architecture: any
-Depends: libmusiccast0 (= ${binary:Version}),
-         ${misc:Depends},
-         ${shlibs:Depends}
-Description: command-line tool for Yamaha MusicCast devices
- mcctl discovers devices on the LAN and queries or controls zones
- (power, volume, mute, Net/USB presets, and related YXC endpoints).
+ Headers and pkg-config file for building against libmusiccast.

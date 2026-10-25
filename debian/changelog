@@ -1,3 +1,9 @@
+libmusiccast (1.0.0~devel-2) unstable; urgency=medium
+
+  * Ship mcctl in libmusiccast0; drop separate libmusiccast-tools package.
+
+ -- Jasper Nevens <jasper.nevens@linux.com>  Sun, 25 Oct 2026 21:40:00 +0100
+
 libmusiccast (1.0.0~devel-1) unstable; urgency=medium
 
   * Initial Debian packaging.
