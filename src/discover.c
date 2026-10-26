@@ -1,5 +1,7 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * discover.c - locate Yamaha MusicCast devices via SSDP (UPnP)
+ * Copyright (C) 2015-2026 Jasper Nevens
+ * discover.c — locate Yamaha MusicCast devices via SSDP (UPnP)
  */
 #define _GNU_SOURCE
 

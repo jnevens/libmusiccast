@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/*
+ * Copyright (C) 2015-2026 Jasper Nevens
+ */
 #include <check.h>
 #include <stdlib.h>
 #include <unistd.h>

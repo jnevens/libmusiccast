@@ -20,6 +20,10 @@ EXTRA_DIST = \
 	m4/gcov.m4 \
 	m4/valgrind.m4 \
 	libmusiccast.pc.in \
+	NOTICE \
+	COPYING \
+	docs/mcctl-api-coverage.md \
+	docs/YXC-specs.md \
 	misc/cppcheck-env.h \
 	misc/cppcheck-suppressions.txt \
 	scripts/cppcheck.sh

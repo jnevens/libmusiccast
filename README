@@ -1,40 +1,67 @@
-Installation
+libmusiccast
 ============
 
-On UNIX-like systems (including Linux, Mac OS X, MinGW), use the 
-autotools based build system. Run the following commands from the top 
-directory (containing this file) to configure, build and install the 
-library and utilities:
+C library and **mcctl** CLI for discovering and controlling Yamaha MusicCast
+devices on your LAN using the Yamaha Extended Control (YXC) HTTP API.
+
+Requirements
+------------
+
+* A UNIX-like system (Linux, macOS, MinGW, etc.)
+* **Runtime:** libcurl, json-c
+* **Build:** Autoconf, Automake, Libtool, pkg-config, a C compiler
+* **Optional:** Check (unit tests), lcov/gcovr (coverage)
+
+Compatible Yamaha MusicCast hardware on the same network as the machine running
+mcctl or your application.
+
+Quick start
+-----------
+
+From a release tarball:
 
   $ ./configure
   $ make
-  $ make install
+  $ sudo make install
 
-If you downloaded the libmusiccast source code directly from the git
-source code repository, then you need to create the configure script as
-the first step:
+From git:
 
-  $ autoreconf --install
+  $ autoreconf -fi
+  $ ./configure --enable-tests
+  $ make
+  $ make check
 
-To uninstall libmusiccast again, run:
+Try **mcctl detect**, then **mcctl HOST status** (or **mcctl -a HOST status**).
+See **mcctl(1)** after install, or **mcctl help**.
 
-  $ make uninstall
+API coverage
+------------
+
+See [docs/mcctl-api-coverage.md](docs/mcctl-api-coverage.md) for which YXC
+endpoints are implemented. Official Yamaha spec PDFs are not included in the
+repo; see [docs/YXC-specs.md](docs/YXC-specs.md).
 
 Support
-=======
+-------
 
-Please send bug reports, feedback or questions via github
+Bug reports and contributions:
 
   https://github.com/jnevens/libmusiccast
 
-or contact me directly:
+Contact:
 
   jasper.nevens@linux.com
 
-License
-=======
+Legal
+-----
 
-libmusiccast is free software, released under the terms of the GNU
-Lesser General Public License (LGPLv2.1).
+Copyright (C) 2015-2026 Jasper Nevens. Licensed under the **GNU Lesser General
+Public License v2.1 or later**; see the file **LICENSE** (also available as
+**COPYING**).
 
-You can find a copy of the license in the file COPYING.
+Trademark notice, third-party libraries, and notes on Yamaha documentation:
+see **NOTICE**.
+
+Yamaha and MusicCast are trademarks of Yamaha Corporation. This project is not
+affiliated with or endorsed by Yamaha. Use at your own risk; firmware and API
+behaviour may differ by device model and version.

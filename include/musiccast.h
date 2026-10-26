@@ -1,8 +1,7 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * musiccast.h
- *
- *  Created on: Feb 17, 2015
- *      Author: jnevens
+ * Copyright (C) 2015-2026 Jasper Nevens
+ * musiccast.h — public API for libmusiccast
  */
 
 #ifndef INCLUDE_MUSICCAST_H_

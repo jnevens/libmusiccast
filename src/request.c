@@ -1,8 +1,6 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 /*
- * request.c
- *
- *  Created on: Jun 12, 2018
- *      Author: jnevens
+ * Copyright (C) 2015-2026 Jasper Nevens
  */
 #define _GNU_SOURCE
 

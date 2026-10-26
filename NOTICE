@@ -1,0 +1,35 @@
+libmusiccast
+Copyright (C) 2015-2026 Jasper Nevens
+
+This project is free software licensed under the GNU Lesser General Public
+License v2.1 or later. See the file LICENSE for the full license text.
+
+Trademarks
+----------
+
+Yamaha and MusicCast are trademarks of Yamaha Corporation. This project is
+an independent open-source client for the Yamaha Extended Control (YXC)
+protocol. It is not affiliated with, endorsed by, or sponsored by Yamaha
+Corporation.
+
+Device behaviour, firmware features, and protocol details may change without
+notice and are not guaranteed by this software.
+
+Third-party software
+--------------------
+
+Runtime dependencies (not bundled):
+
+  * libcurl — client HTTP(S) (license: curl license / MIT-style)
+  * json-c — JSON parsing (license: MIT)
+
+Build-time dependencies include the Autotools toolchain, pkg-config, and
+(optionally) the Check unit test framework.
+
+Yamaha API documentation
+------------------------
+
+YXC API specification documents published by Yamaha are not redistributed
+in this repository. Obtain them from Yamaha or your product documentation
+if you need the official specs. The file docs/mcctl-api-coverage.md is a
+project-maintained checklist only and is not a substitute for those documents.
