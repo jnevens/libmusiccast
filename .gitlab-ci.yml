@@ -8,6 +8,13 @@
 #   GITHUB_DEPLOY_KEY     — alternative: type File (multiline paste often breaks in GitLab UI)
 #   GITHUB_REPO_SSH       — optional; default git@github.com:jnevens/libmusiccast.git
 #   GITHUB_TOKEN          — optional masked PAT; uploads distcheck .tar.gz to GitHub Releases
+#
+# Internal APT (same manual release job as GitHub, tags v*):
+#   APT_PUBLISH_KEY_B64 — base64 -w0 SSH private key (Masked, Protected)
+#   APT_REPREPRO_SUITE  — reprepro distribution name (required for APT upload), e.g. noble
+#   APT_PUBLISH_SSH     — optional; default reprepro@192.168.64.110
+#   APT_REPREPRO_BASE   — optional; default /srv/apt (reprepro -b path on host)
+#   APT_INCOMING_DIR    — optional; default /srv/apt/incoming (stage debs, then includedeb)
 # If apt "invalid signature" errors persist on self-hosted runners: prune Docker
 # (docker system prune), check runner disk space and system clock (NTP).
 
@@ -149,7 +156,7 @@ build-deb:
     paths:
       - deb/
 
-# Push master + tag to public GitHub after tests and distcheck succeed.
+# Push master + tag to GitHub and .deb files to reprepro (one manual play on version tags).
 publish-github:
   extends: .ci_apt
   stage: release
@@ -162,12 +169,17 @@ publish-github:
     - job: build-test-coverage
     - job: distcheck
       artifacts: true
+    - job: build-deb
+      artifacts: true
   variables:
     GIT_DEPTH: "0"
+    APT_PUBLISH_SSH: "reprepro@192.168.64.110"
+    APT_REPREPRO_BASE: "/srv/apt"
   before_script:
     - !reference [.ci_apt, before_script]
     - apt-get install -y -qq git openssh-client ca-certificates
   script:
+    - chmod +x scripts/ci-ssh-key-file.sh scripts/publish-apt-reprepro.sh
     - |
       set -eu
       KEY_FILE="$(mktemp)"
@@ -243,4 +255,14 @@ publish-github:
       else
         echo "GITHUB_TOKEN not set; skipped GitHub Release asset upload (git push only)."
         echo "GitHub still provides auto-generated source archives for the tag."
+      fi
+      if [ -n "${APT_PUBLISH_KEY_B64:-}" ] || { [ -n "${APT_PUBLISH_KEY:-}" ] && [ -f "${APT_PUBLISH_KEY}" ]; }; then
+        : "${APT_REPREPRO_SUITE:?Set CI variable APT_REPREPRO_SUITE (e.g. noble)}"
+        APT_KEY_FILE="$(scripts/ci-ssh-key-file.sh APT_PUBLISH)"
+        HOST="${APT_PUBLISH_SSH#*@}"
+        ssh-keyscan -t ed25519,rsa "${HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+        ssh-add "${APT_KEY_FILE}"
+        ./scripts/publish-apt-reprepro.sh deb
+      else
+        echo "APT_PUBLISH_KEY_B64 not set; skipped reprepro upload."
       fi
