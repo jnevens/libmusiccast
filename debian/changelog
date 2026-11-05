@@ -1,3 +1,10 @@
+libmusiccast (1.0.1-1) unstable; urgency=medium
+
+  * Add mcctl now-playing (YXC getPlayInfo for Net/USB, tuner, and CD).
+  * Library: musiccast_now_playing() and play-info query helpers.
+
+ -- Jasper Nevens <jasper.nevens@linux.com>  Thu,  5 Nov 2026 20:15:00 +0100
+
 libmusiccast (1.0.0-1) unstable; urgency=medium
 
   * First stable upstream release (libmusiccast 1.0.0, mcctl CLI).
