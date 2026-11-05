@@ -67,6 +67,20 @@ typedef struct musiccast_zone_list_s {
 	size_t count;
 } musiccast_zone_list_t;
 
+/* Current playback (zone input + getPlayInfo for netusb / tuner / cd). */
+typedef struct musiccast_now_playing_s {
+	char *input;
+	char *power;
+	char *playback;
+	char *artist;
+	char *album;
+	char *track;
+	char *detail;
+	int play_time;
+	int total_time;
+	bool play_info;
+} musiccast_now_playing_t;
+
 /* Release version string (same as mcctl --version and libmusiccast.pc). */
 const char *musiccast_version(void);
 
@@ -105,5 +119,12 @@ void musiccast_netusb_preset_list_free(musiccast_netusb_preset_list_t *list);
 bool musiccast_netusb_preset_recall(musiccast_conn_t *mc, const char *zone, int num);
 bool musiccast_netusb_preset_store(musiccast_conn_t *mc, int num);
 bool musiccast_netusb_preset_clear(musiccast_conn_t *mc, int num);
+
+char *musiccast_netusb_play_info(musiccast_conn_t *mc);
+char *musiccast_tuner_play_info(musiccast_conn_t *mc);
+char *musiccast_cd_play_info(musiccast_conn_t *mc);
+bool musiccast_now_playing(musiccast_conn_t *mc, const char *zone,
+			   musiccast_now_playing_t *info);
+void musiccast_now_playing_free(musiccast_now_playing_t *info);
 
 #endif /* INCLUDE_MUSICCAST_H_ */

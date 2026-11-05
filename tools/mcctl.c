@@ -40,6 +40,7 @@ static char doc[] =
 	"\n"
 	"Zone commands (-z ZONE, default main):\n"
 	"  status              getStatus (JSON)\n"
+	"  now-playing         input source and track (getPlayInfo)\n"
 	"  power [on|standby|toggle]\n"
 	"  volume [LEVEL|up|down]  (--step for up/down)\n"
 	"  mute [on|off|toggle]\n"
@@ -76,6 +77,7 @@ struct arguments_s {
 	bool func_status;
 	bool location_info;
 	bool status;
+	bool now_playing_cmd;
 	bool sound_program_list;
 	bool zones_cmd;
 	bool power_cmd;
@@ -107,7 +109,7 @@ static bool arguments_has_action(const struct arguments_s *args)
 {
 	return args->help_cmd || args->device_info || args->features
 		|| args->network_status || args->func_status || args->location_info
-		|| args->status || args->sound_program_list || args->zones_cmd
+		|| args->status || args->now_playing_cmd || args->sound_program_list || args->zones_cmd
 		|| args->power_cmd || args->volume_cmd || args->mute_cmd
 		|| args->preset_cmd;
 }
@@ -144,6 +146,10 @@ static bool parse_command(const char *arg, struct arguments_s *args)
 	}
 	if (strcmp(arg, "status") == 0) {
 		args->status = 1;
+		return true;
+	}
+	if (strcmp(arg, "now-playing") == 0 || strcmp(arg, "playing") == 0) {
+		args->now_playing_cmd = 1;
 		return true;
 	}
 	if (strcmp(arg, "sound-program-list") == 0) {
@@ -348,6 +354,40 @@ static void zones_print_list(const musiccast_zone_list_t *list)
 	}
 }
 
+static void now_playing_print(const musiccast_now_playing_t *np)
+{
+	if (np->power)
+		printf("power: %s\n", np->power);
+	if (np->input)
+		printf("input: %s\n", np->input);
+	if (np->power && strcmp(np->power, "standby") == 0)
+		return;
+	if (!np->play_info) {
+		printf("track: (no play metadata for this input)\n");
+		return;
+	}
+	if (np->playback)
+		printf("playback: %s\n", np->playback);
+	if (np->artist)
+		printf("artist: %s\n", np->artist);
+	if (np->album)
+		printf("album: %s\n", np->album);
+	if (np->track)
+		printf("track: %s\n", np->track);
+	else
+		printf("track: (unknown)\n");
+	if (np->detail)
+		printf("detail: %s\n", np->detail);
+	if (np->play_time >= 0) {
+		if (np->total_time > 0)
+			printf("time: %d:%02d / %d:%02d\n",
+			       np->play_time / 60, np->play_time % 60,
+			       np->total_time / 60, np->total_time % 60);
+		else
+			printf("time: %d:%02d\n", np->play_time / 60, np->play_time % 60);
+	}
+}
+
 static void preset_print_list(const musiccast_netusb_preset_list_t *list)
 {
 	size_t w_num = strlen("NUM");
@@ -548,6 +588,19 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 		}
 		printf("%s", zone_status);
 		free(zone_status);
+		return 0;
+	}
+	if (args->now_playing_cmd) {
+		const char *zone = command_zone(args);
+		musiccast_now_playing_t np = { 0 };
+
+		if (!musiccast_now_playing(mcc, zone, &np)) {
+			fprintf(stderr, "Failed to retrieve now playing for zone (%s)!\n", zone);
+			return 1;
+		}
+		if (!args->silent)
+			now_playing_print(&np);
+		musiccast_now_playing_free(&np);
 		return 0;
 	}
 	if (args->sound_program_list) {

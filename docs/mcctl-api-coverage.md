@@ -142,7 +142,7 @@ Use `[x]` / `[ ]` when updating this file.
 | API | Lib | CLI | Notes |
 |-----|-----|-----|-------|
 | getPresetInfo | [ ] | [ ] | |
-| getPlayInfo | [ ] | [ ] | |
+| getPlayInfo | [x] | [x] | `now-playing` (tuner) |
 | setBand | [ ] | [ ] | |
 | setFreq | [ ] | [ ] | |
 | recallPreset | [ ] | [ ] | Not the same as `mcctl preset play` (netusb) |
@@ -167,7 +167,7 @@ Use `[x]` / `[ ]` when updating this file.
 | recallPreset | [x] | [x] | `preset play` / `preset recall` |
 | storePreset | [x] | [x] | `preset store` |
 | clearPreset | [x] | [x] | `preset clear` |
-| getPlayInfo | [ ] | [ ] | |
+| getPlayInfo | [x] | [x] | `now-playing` |
 | setPlayback | [ ] | [ ] | play / pause / stop / skip |
 | setPlayPosition | [ ] | [ ] | |
 | setRepeat | [ ] | [ ] | |
@@ -196,7 +196,7 @@ Use `[x]` / `[ ]` when updating this file.
 
 | API | Lib | CLI |
 |-----|-----|-----|
-| getPlayInfo | [ ] | [ ] |
+| getPlayInfo | [x] | [x] | `now-playing` (CD) |
 | setPlayback | [ ] | [ ] |
 | setRepeat | [ ] | [ ] |
 | setShuffle | [ ] | [ ] |

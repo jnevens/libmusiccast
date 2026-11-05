@@ -109,6 +109,11 @@ default is
 .B status
 Zone status as JSON (\fIgetStatus\fR).
 .TP
+.B now-playing
+Current input and track (\fIgetStatus\fR + \fIgetPlayInfo\fR for Net/USB, tuner, or CD).
+Alias:
+.BR playing .
+.TP
 .B power
 Print power state (\fIon\fR or \fIstandby\fR).
 .TP

@@ -799,3 +799,259 @@ bool musiccast_netusb_preset_clear(musiccast_conn_t *mc, int num)
 	free(path);
 	return rv;
 }
+
+char *musiccast_netusb_play_info(musiccast_conn_t *mc)
+{
+	char *response = NULL;
+
+	if (!mc)
+		return NULL;
+	if (!musiccast_request(mc, "/YamahaExtendedControl/v1/netusb/getPlayInfo", &response))
+		return NULL;
+	if (!response || !musiccast_response_ok(response)) {
+		free(response);
+		return NULL;
+	}
+	return response;
+}
+
+char *musiccast_tuner_play_info(musiccast_conn_t *mc)
+{
+	char *response = NULL;
+
+	if (!mc)
+		return NULL;
+	if (!musiccast_request(mc, "/YamahaExtendedControl/v1/tuner/getPlayInfo", &response))
+		return NULL;
+	if (!response || !musiccast_response_ok(response)) {
+		free(response);
+		return NULL;
+	}
+	return response;
+}
+
+char *musiccast_cd_play_info(musiccast_conn_t *mc)
+{
+	char *response = NULL;
+
+	if (!mc)
+		return NULL;
+	if (!musiccast_request(mc, "/YamahaExtendedControl/v1/cd/getPlayInfo", &response))
+		return NULL;
+	if (!response || !musiccast_response_ok(response)) {
+		free(response);
+		return NULL;
+	}
+	return response;
+}
+
+static char *json_strdup_string_field(json_object *parent, const char *key)
+{
+	json_object *jobj;
+	const char *s;
+
+	if (!parent)
+		return NULL;
+	jobj = json_object_object_get(parent, key);
+	if (!jobj || !json_object_is_type(jobj, json_type_string))
+		return NULL;
+	s = json_object_get_string(jobj);
+	if (!s || s[0] == '\0')
+		return NULL;
+	return strdup(s);
+}
+
+static int json_get_int_field(json_object *parent, const char *key, int fallback)
+{
+	json_object *jobj;
+
+	if (!parent)
+		return fallback;
+	jobj = json_object_object_get(parent, key);
+	if (!jobj || !json_object_is_type(jobj, json_type_int))
+		return fallback;
+	return json_object_get_int(jobj);
+}
+
+static void now_playing_apply_netusb(musiccast_now_playing_t *info, json_object *jobj)
+{
+	info->playback = json_strdup_string_field(jobj, "playback");
+	info->artist = json_strdup_string_field(jobj, "artist");
+	info->album = json_strdup_string_field(jobj, "album");
+	info->track = json_strdup_string_field(jobj, "track");
+	info->play_time = json_get_int_field(jobj, "play_time", -60000);
+	info->total_time = json_get_int_field(jobj, "total_time", 0);
+	info->play_info = true;
+}
+
+static void now_playing_apply_cd(musiccast_now_playing_t *info, json_object *jobj)
+{
+	info->playback = json_strdup_string_field(jobj, "playback");
+	info->artist = json_strdup_string_field(jobj, "artist");
+	info->album = json_strdup_string_field(jobj, "album");
+	info->track = json_strdup_string_field(jobj, "track");
+	info->play_time = json_get_int_field(jobj, "play_time", -60000);
+	info->total_time = json_get_int_field(jobj, "total_time", 0);
+	info->play_info = true;
+}
+
+static void now_playing_apply_tuner(musiccast_now_playing_t *info, json_object *jobj)
+{
+	json_object *jobj_rds;
+	json_object *jobj_dab;
+	json_object *jobj_fm;
+	json_object *jobj_band;
+	const char *band = NULL;
+
+	jobj_band = json_object_object_get(jobj, "band");
+	if (jobj_band && json_object_is_type(jobj_band, json_type_string))
+		band = json_object_get_string(jobj_band);
+
+	info->playback = json_strdup_string_field(jobj, "playback");
+	if (!info->playback)
+		info->playback = strdup("play");
+
+	jobj_rds = json_object_object_get(jobj, "rds");
+	if (jobj_rds) {
+		info->track = json_strdup_string_field(jobj_rds, "program_service");
+		if (!info->track)
+			info->track = json_strdup_string_field(jobj_rds, "radio_text_a");
+		info->detail = json_strdup_string_field(jobj_rds, "program_type");
+	}
+
+	jobj_dab = json_object_object_get(jobj, "dab");
+	if (jobj_dab) {
+		if (!info->track) {
+			info->track = json_strdup_string_field(jobj_dab, "service_label");
+			if (!info->track)
+				info->track = json_strdup_string_field(jobj_dab, "ch_label");
+		}
+		if (!info->detail)
+			info->detail = json_strdup_string_field(jobj_dab, "ensemble_label");
+	}
+
+	jobj_fm = json_object_object_get(jobj, "fm");
+	if (jobj_fm && band && strcmp(band, "fm") == 0 && !info->track) {
+		int freq = json_get_int_field(jobj_fm, "freq", 0);
+		char buf[64];
+
+		if (freq > 0) {
+			snprintf(buf, sizeof(buf), "%.1f MHz", freq / 1000.0);
+			info->track = strdup(buf);
+		}
+	}
+
+	if (band && band[0] != '\0') {
+		char buf[64];
+
+		snprintf(buf, sizeof(buf), "band=%s", band);
+		if (info->detail) {
+			char *combined;
+
+			if (asprintf(&combined, "%s  %s", buf, info->detail) > 0) {
+				free(info->detail);
+				info->detail = combined;
+			}
+		} else {
+			info->detail = strdup(buf);
+		}
+	}
+
+	info->play_info = true;
+}
+
+static int now_playing_source_kind(const char *input)
+{
+	if (!input || input[0] == '\0')
+		return 0;
+	if (strcmp(input, "cd") == 0)
+		return 3;
+	if (strcmp(input, "tuner") == 0 || strcmp(input, "dab") == 0
+	    || strcmp(input, "fm") == 0 || strcmp(input, "am") == 0)
+		return 2;
+	if (strncmp(input, "hdmi", 4) == 0 || strncmp(input, "av", 2) == 0
+	    || strcmp(input, "aux") == 0 || strncmp(input, "audio", 5) == 0
+	    || strcmp(input, "phono") == 0 || strcmp(input, "tv") == 0)
+		return 0;
+	return 1;
+}
+
+void musiccast_now_playing_free(musiccast_now_playing_t *info)
+{
+	if (!info)
+		return;
+	free(info->input);
+	free(info->power);
+	free(info->playback);
+	free(info->artist);
+	free(info->album);
+	free(info->track);
+	free(info->detail);
+	memset(info, 0, sizeof(*info));
+	info->play_time = -60000;
+}
+
+bool musiccast_now_playing(musiccast_conn_t *mc, const char *zone,
+			   musiccast_now_playing_t *info)
+{
+	char *status = NULL;
+	char *play_raw = NULL;
+	json_object *jobj_status = NULL;
+	json_object *jobj_play = NULL;
+	const char *power;
+	int kind;
+	bool ok = false;
+
+	if (!mc || !zone || !info)
+		return false;
+
+	musiccast_now_playing_free(info);
+	info->play_time = -60000;
+
+	status = musiccast_zone_status(mc, zone);
+	if (!status)
+		return false;
+
+	jobj_status = json_tokener_parse(status);
+	free(status);
+	if (!jobj_status)
+		return false;
+
+	info->power = json_strdup_string_field(jobj_status, "power");
+	info->input = json_strdup_string_field(jobj_status, "input");
+	if (!info->input)
+		info->input = strdup("unknown");
+
+	power = info->power;
+	if (power && strcmp(power, "standby") == 0) {
+		ok = true;
+		goto out;
+	}
+
+	kind = now_playing_source_kind(info->input);
+	if (kind == 1)
+		play_raw = musiccast_netusb_play_info(mc);
+	else if (kind == 2)
+		play_raw = musiccast_tuner_play_info(mc);
+	else if (kind == 3)
+		play_raw = musiccast_cd_play_info(mc);
+
+	if (play_raw) {
+		jobj_play = json_tokener_parse(play_raw);
+		free(play_raw);
+		if (jobj_play) {
+			if (kind == 1)
+				now_playing_apply_netusb(info, jobj_play);
+			else if (kind == 2)
+				now_playing_apply_tuner(info, jobj_play);
+			else if (kind == 3)
+				now_playing_apply_cd(info, jobj_play);
+		}
+	}
+
+	ok = true;
+out:
+	json_object_put(jobj_play);
+	json_object_put(jobj_status);
+	return ok;
+}
