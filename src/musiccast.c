@@ -1150,6 +1150,137 @@ static int now_playing_source_kind(const char *input)
 	return 1;
 }
 
+static const char *playback_query_value(musiccast_playback_action_e action)
+{
+	switch (action) {
+	case MC_PLAYBACK_PLAY:
+		return "play";
+	case MC_PLAYBACK_PAUSE:
+		return "pause";
+	case MC_PLAYBACK_STOP:
+		return "stop";
+	case MC_PLAYBACK_TOGGLE:
+		return "play_pause";
+	case MC_PLAYBACK_PREVIOUS:
+		return "previous";
+	case MC_PLAYBACK_NEXT:
+		return "next";
+	default:
+		return NULL;
+	}
+}
+
+static bool playback_set_module(musiccast_conn_t *mc, const char *module, const char *playback)
+{
+	bool rv;
+	char *response = NULL;
+	char *path = NULL;
+
+	if (!mc || !module || !playback)
+		return false;
+
+	if (asprintf(&path, "/YamahaExtendedControl/v1/%s/setPlayback?playback=%s",
+		     module, playback) <= 0)
+		return false;
+
+	rv = musiccast_request(mc, path, &response);
+	if (rv && response)
+		rv = musiccast_response_ok(response);
+	free(response);
+	free(path);
+	return rv;
+}
+
+bool musiccast_netusb_playback_set(musiccast_conn_t *mc, musiccast_playback_action_e action)
+{
+	return playback_set_module(mc, "netusb", playback_query_value(action));
+}
+
+/* CD setPlayback has no play_pause; flip using the current playback state. */
+static const char *cd_toggle_playback(musiccast_conn_t *mc)
+{
+	char *raw;
+	json_object *jobj;
+	char *state;
+	const char *target = "play";
+
+	raw = musiccast_cd_play_info(mc);
+	if (!raw)
+		return "play";
+
+	jobj = json_tokener_parse(raw);
+	free(raw);
+	if (!jobj)
+		return "play";
+
+	state = json_strdup_string_field(jobj, "playback");
+	json_object_put(jobj);
+	if (state && strcmp(state, "pause") != 0 && strcmp(state, "stop") != 0)
+		target = "pause";
+	free(state);
+	return target;
+}
+
+bool musiccast_cd_playback_set(musiccast_conn_t *mc, musiccast_playback_action_e action)
+{
+	const char *playback;
+
+	if (action == MC_PLAYBACK_TOGGLE)
+		playback = cd_toggle_playback(mc);
+	else
+		playback = playback_query_value(action);
+
+	return playback_set_module(mc, "cd", playback);
+}
+
+bool musiccast_tuner_preset_switch(musiccast_conn_t *mc, bool next)
+{
+	bool rv;
+	char *response = NULL;
+	char *path = NULL;
+	const char *dir = next ? "next" : "previous";
+
+	if (!mc)
+		return false;
+
+	if (asprintf(&path, "/YamahaExtendedControl/v1/tuner/switchPreset?dir=%s", dir) <= 0)
+		return false;
+
+	rv = musiccast_request(mc, path, &response);
+	if (rv && response)
+		rv = musiccast_response_ok(response);
+	free(response);
+	free(path);
+	return rv;
+}
+
+bool musiccast_playback_set(musiccast_conn_t *mc, const char *zone,
+			    musiccast_playback_action_e action)
+{
+	char *input;
+	int kind;
+	bool rv = false;
+
+	if (!mc || !zone || !playback_query_value(action))
+		return false;
+
+	input = musiccast_zone_input_get(mc, zone);
+	if (!input)
+		return false;
+
+	kind = now_playing_source_kind(input);
+	if (kind == 1)
+		rv = musiccast_netusb_playback_set(mc, action);
+	else if (kind == 3)
+		rv = musiccast_cd_playback_set(mc, action);
+	else if (kind == 2
+		 && (action == MC_PLAYBACK_NEXT || action == MC_PLAYBACK_PREVIOUS))
+		rv = musiccast_tuner_preset_switch(mc, action == MC_PLAYBACK_NEXT);
+
+	free(input);
+	return rv;
+}
+
 void musiccast_now_playing_free(musiccast_now_playing_t *info)
 {
 	if (!info)

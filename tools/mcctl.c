@@ -48,6 +48,14 @@ static char doc[] =
 	"  input list          available inputs\n"
 	"  input set INPUT     switch input\n"
 	"\n"
+	"Playback (current Net/USB or CD source; tuner: next/previous preset):\n"
+	"  play, resume\n"
+	"  pause\n"
+	"  stop\n"
+	"  toggle              play/pause\n"
+	"  next\n"
+	"  previous            (alias: prev)\n"
+	"\n"
 	"Net/USB presets:\n"
 	"  preset list\n"
 	"  preset play NUM     (alias: recall)\n"
@@ -87,6 +95,8 @@ struct arguments_s {
 	bool volume_cmd;
 	bool mute_cmd;
 	bool input_cmd;
+	bool playback_cmd;
+	musiccast_playback_action_e playback_action;
 	const char *volume_value;
 	const char *volume_step;
 	const char *power_state;
@@ -123,7 +133,7 @@ static bool arguments_has_action(const struct arguments_s *args)
 		|| args->network_status || args->func_status || args->location_info
 		|| args->status || args->now_playing_cmd || args->sound_program_list || args->zones_cmd
 		|| args->power_cmd || args->volume_cmd || args->mute_cmd
-		|| args->input_cmd || args->preset_cmd;
+		|| args->input_cmd || args->playback_cmd || args->preset_cmd;
 }
 
 static bool parse_command(const char *arg, struct arguments_s *args)
@@ -186,6 +196,36 @@ static bool parse_command(const char *arg, struct arguments_s *args)
 	}
 	if (strcmp(arg, "input") == 0) {
 		args->input_cmd = 1;
+		return true;
+	}
+	if (strcmp(arg, "play") == 0 || strcmp(arg, "resume") == 0) {
+		args->playback_cmd = 1;
+		args->playback_action = MC_PLAYBACK_PLAY;
+		return true;
+	}
+	if (strcmp(arg, "pause") == 0) {
+		args->playback_cmd = 1;
+		args->playback_action = MC_PLAYBACK_PAUSE;
+		return true;
+	}
+	if (strcmp(arg, "stop") == 0) {
+		args->playback_cmd = 1;
+		args->playback_action = MC_PLAYBACK_STOP;
+		return true;
+	}
+	if (strcmp(arg, "toggle") == 0) {
+		args->playback_cmd = 1;
+		args->playback_action = MC_PLAYBACK_TOGGLE;
+		return true;
+	}
+	if (strcmp(arg, "next") == 0) {
+		args->playback_cmd = 1;
+		args->playback_action = MC_PLAYBACK_NEXT;
+		return true;
+	}
+	if (strcmp(arg, "previous") == 0 || strcmp(arg, "prev") == 0) {
+		args->playback_cmd = 1;
+		args->playback_action = MC_PLAYBACK_PREVIOUS;
 		return true;
 	}
 	if (strcmp(arg, "preset") == 0) {
@@ -835,6 +875,15 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 			}
 			return 0;
 		}
+	}
+	if (args->playback_cmd) {
+		const char *zone = command_zone(args);
+
+		if (!musiccast_playback_set(mcc, zone, args->playback_action)) {
+			fprintf(stderr, "Failed to control playback on zone (%s)!\n", zone);
+			return 1;
+		}
+		return 0;
 	}
 	if (args->preset_cmd) {
 		const char *zone = command_zone(args);

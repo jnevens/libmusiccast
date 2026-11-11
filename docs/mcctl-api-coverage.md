@@ -20,9 +20,9 @@ Use `[x]` / `[ ]` when updating this file.
 |------|-------------------|----------------|
 | Basic §4 System | 6 / 42 | 6 / 42 |
 | Basic §5 Zone | 5 / 29 | 5 / 29 (+ `zones` and `input list` parse `getFeatures`) |
-| Basic §6 Tuner | 0 / 15 | 0 / 15 |
-| Basic §7 Net/USB | 4 / 24 | 4 / 24 |
-| Basic §8 CD | 0 / 6 | 0 / 6 |
+| Basic §6 Tuner | 2 / 15 | 2 / 15 |
+| Basic §7 Net/USB | 6 / 24 | 6 / 24 |
+| Basic §8 CD | 2 / 7 | 2 / 7 |
 | Basic §9 Clock | 0 / 5 | 0 / 5 |
 | Basic §11 Events | 0 | 0 |
 | Advanced §4–§5 | 0 / 9 | 0 / 9 |
@@ -36,6 +36,7 @@ Use `[x]` / `[ ]` when updating this file.
 | SSDP discovery | [x] | [x] | `musiccast_discover()` / `mcctl detect` |
 | Zone list from features | [x] | [x] | `musiccast_zone_list()` / `mcctl zones` |
 | Input list from features | [x] | [x] | `musiccast_zone_input_list()` / `mcctl input list` |
+| Current-input playback | [x] | [x] | `musiccast_playback_set()` / `play`, `pause`, `resume`, `stop`, `toggle`, `next`, `previous` |
 | `mcctl help` | — | [x] | Usage only |
 
 ---
@@ -147,7 +148,7 @@ Use `[x]` / `[ ]` when updating this file.
 | setBand | [ ] | [ ] | |
 | setFreq | [ ] | [ ] | |
 | recallPreset | [ ] | [ ] | Not the same as `mcctl preset play` (netusb) |
-| switchPreset | [ ] | [ ] | |
+| switchPreset | [x] | [x] | `next` / `previous` when the zone input is tuner |
 | storePreset | [ ] | [ ] | |
 | clearPreset | [ ] | [ ] | |
 | startAutoPreset | [ ] | [ ] | |
@@ -169,7 +170,7 @@ Use `[x]` / `[ ]` when updating this file.
 | storePreset | [x] | [x] | `preset store` |
 | clearPreset | [x] | [x] | `preset clear` |
 | getPlayInfo | [x] | [x] | `now-playing` |
-| setPlayback | [ ] | [ ] | play / pause / stop / skip |
+| setPlayback | [x] | [x] | `play`, `pause`, `resume`, `stop`, `toggle`, `next`, `previous` |
 | setPlayPosition | [ ] | [ ] | |
 | setRepeat | [ ] | [ ] | |
 | setShuffle | [ ] | [ ] | |
@@ -198,7 +199,7 @@ Use `[x]` / `[ ]` when updating this file.
 | API | Lib | CLI |
 |-----|-----|-----|
 | getPlayInfo | [x] | [x] | `now-playing` (CD) |
-| setPlayback | [ ] | [ ] |
+| setPlayback | [x] | [x] | same commands when the zone input is `cd` |
 | setRepeat | [ ] | [ ] |
 | setShuffle | [ ] | [ ] |
 | toggleRepeat | [ ] | [ ] |
@@ -274,7 +275,7 @@ Use `[x]` / `[ ]` when updating this file.
 
 ## Suggested implementation order
 
-1. **Net/USB transport** — `getPlayInfo`, `setPlayback` (+ CLI `play` / `pause` / `stop`).
+1. **Net/USB transport** — `setRepeat` / `setShuffle` (`getPlayInfo` and `setPlayback` are done).
 2. **Zone source** — `setSoundProgram` (`setInput` is done).
 3. **Distribution** — `getDistributionInfo` first, then POST wrappers for server/client/start/stop.
 4. **Tuner** — parallel to netusb presets under `mcctl tuner …`.

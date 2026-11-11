@@ -37,6 +37,15 @@ typedef enum {
 	MC_ZONE_VOLUME_SET_DIRECT,
 } musiccast_zone_volume_action_e;
 
+typedef enum {
+	MC_PLAYBACK_PLAY,
+	MC_PLAYBACK_PAUSE,
+	MC_PLAYBACK_STOP,
+	MC_PLAYBACK_TOGGLE,
+	MC_PLAYBACK_PREVIOUS,
+	MC_PLAYBACK_NEXT,
+} musiccast_playback_action_e;
+
 typedef struct musiccast_zone_volume_info_s {
 	int volume;
 	int min;
@@ -134,6 +143,14 @@ bool musiccast_netusb_preset_clear(musiccast_conn_t *mc, int num);
 char *musiccast_netusb_play_info(musiccast_conn_t *mc);
 char *musiccast_tuner_play_info(musiccast_conn_t *mc);
 char *musiccast_cd_play_info(musiccast_conn_t *mc);
+
+/* Transport for the zone's current input (Net/USB or CD setPlayback;
+ * tuner next/previous uses switchPreset). */
+bool musiccast_netusb_playback_set(musiccast_conn_t *mc, musiccast_playback_action_e action);
+bool musiccast_cd_playback_set(musiccast_conn_t *mc, musiccast_playback_action_e action);
+bool musiccast_tuner_preset_switch(musiccast_conn_t *mc, bool next);
+bool musiccast_playback_set(musiccast_conn_t *mc, const char *zone,
+			    musiccast_playback_action_e action);
 bool musiccast_now_playing(musiccast_conn_t *mc, const char *zone,
 			   musiccast_now_playing_t *info);
 void musiccast_now_playing_free(musiccast_now_playing_t *info);

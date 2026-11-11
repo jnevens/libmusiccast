@@ -147,6 +147,50 @@ Select
 .I INPUT
 must be one of the ids from
 .BR "input list" .
+.SS Playback
+Acts on the source selected for the zone.
+Net/USB and CD use
+.IR setPlayback .
+.B play
+and
+.B resume
+both send
+.IR play
+(there is no separate resume request).
+.B toggle
+sends
+.I play_pause
+on Net/USB, and play or pause on CD based on the current state.
+On the tuner,
+.B next
+and
+.B previous
+call
+.I switchPreset ;
+play, pause, and stop are not available for that input.
+Line inputs (HDMI, aux, and similar) have no transport control.
+.TP
+.B play
+.TP
+.B resume
+Start or resume playback.
+.TP
+.B pause
+Pause playback.
+.TP
+.B stop
+Stop playback.
+.TP
+.B toggle
+Toggle between play and pause.
+.TP
+.B next
+Next track, or the next tuner preset.
+.TP
+.B previous
+.TP
+.B prev
+Previous track, or the previous tuner preset.
 .SS Net/USB presets
 Presets are shared across Net/USB sources (e.g. net radio, server).
 .TP
@@ -185,6 +229,8 @@ mcctl -a living-room.local volume up --step 5
 mcctl -a living-room.local input
 mcctl -a living-room.local input list
 mcctl -a living-room.local input set tuner
+mcctl -a living-room.local pause
+mcctl -a living-room.local next
 .EE
 .RE
 .TP
