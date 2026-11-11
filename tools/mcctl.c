@@ -393,17 +393,9 @@ static void detect_print_results(const musiccast_discover_list_t *found, bool ve
 
 static void input_print_list(const musiccast_zone_input_list_t *list)
 {
-	size_t w_input = strlen("INPUT");
-
-	for (size_t i = 0; i < list->count; i++)
-		detect_update_width(&w_input, list->ids[i]);
-
-	printf("%-*s\n", (int)w_input, "INPUT");
-
 	for (size_t i = 0; i < list->count; i++) {
-		const char *id = list->ids[i] ? list->ids[i] : "";
-
-		printf("%-*s\n", (int)w_input, id);
+		if (list->ids[i])
+			printf("%s\n", list->ids[i]);
 	}
 }
 
@@ -418,20 +410,9 @@ static bool input_list_contains(const musiccast_zone_input_list_t *list, const c
 
 static void zones_print_list(const musiccast_zone_list_t *list)
 {
-	size_t w_zone = strlen("ZONE");
-
 	for (size_t i = 0; i < list->count; i++) {
-		const char *id = list->zones[i].id ? list->zones[i].id : "";
-
-		detect_update_width(&w_zone, id);
-	}
-
-	printf("%-*s\n", (int)w_zone, "ZONE");
-
-	for (size_t i = 0; i < list->count; i++) {
-		const char *id = list->zones[i].id ? list->zones[i].id : "";
-
-		printf("%-*s\n", (int)w_zone, id);
+		if (list->zones[i].id)
+			printf("%s\n", list->zones[i].id);
 	}
 }
 
