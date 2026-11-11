@@ -44,6 +44,9 @@ static char doc[] =
 	"  power [on|standby|toggle]\n"
 	"  volume [LEVEL|up|down]  (--step for up/down)\n"
 	"  mute [on|off|toggle]\n"
+	"  input               current input\n"
+	"  input list          available inputs\n"
+	"  input set INPUT     switch input\n"
 	"\n"
 	"Net/USB presets:\n"
 	"  preset list\n"
@@ -83,14 +86,17 @@ struct arguments_s {
 	bool power_cmd;
 	bool volume_cmd;
 	bool mute_cmd;
+	bool input_cmd;
 	const char *volume_value;
 	const char *volume_step;
 	const char *power_state;
 	const char *mute_state;
+	const char *input_id;
 	const char *zone;
 	bool preset_cmd;
 	int preset_action;
 	int preset_num;
+	int input_action;
 };
 
 enum {
@@ -99,6 +105,12 @@ enum {
 	PRESET_ACTION_PLAY,
 	PRESET_ACTION_STORE,
 	PRESET_ACTION_CLEAR,
+};
+
+enum {
+	INPUT_ACTION_NONE = 0,
+	INPUT_ACTION_LIST,
+	INPUT_ACTION_SET,
 };
 
 static struct arguments_s arguments = {
@@ -111,7 +123,7 @@ static bool arguments_has_action(const struct arguments_s *args)
 		|| args->network_status || args->func_status || args->location_info
 		|| args->status || args->now_playing_cmd || args->sound_program_list || args->zones_cmd
 		|| args->power_cmd || args->volume_cmd || args->mute_cmd
-		|| args->preset_cmd;
+		|| args->input_cmd || args->preset_cmd;
 }
 
 static bool parse_command(const char *arg, struct arguments_s *args)
@@ -170,6 +182,10 @@ static bool parse_command(const char *arg, struct arguments_s *args)
 	}
 	if (strcmp(arg, "mute") == 0) {
 		args->mute_cmd = 1;
+		return true;
+	}
+	if (strcmp(arg, "input") == 0) {
+		args->input_cmd = 1;
 		return true;
 	}
 	if (strcmp(arg, "preset") == 0) {
@@ -335,6 +351,31 @@ static void detect_print_results(const musiccast_discover_list_t *found, bool ve
 	}
 }
 
+static void input_print_list(const musiccast_zone_input_list_t *list)
+{
+	size_t w_input = strlen("INPUT");
+
+	for (size_t i = 0; i < list->count; i++)
+		detect_update_width(&w_input, list->ids[i]);
+
+	printf("%-*s\n", (int)w_input, "INPUT");
+
+	for (size_t i = 0; i < list->count; i++) {
+		const char *id = list->ids[i] ? list->ids[i] : "";
+
+		printf("%-*s\n", (int)w_input, id);
+	}
+}
+
+static bool input_list_contains(const musiccast_zone_input_list_t *list, const char *input)
+{
+	for (size_t i = 0; i < list->count; i++) {
+		if (list->ids[i] && strcmp(list->ids[i], input) == 0)
+			return true;
+	}
+	return false;
+}
+
 static void zones_print_list(const musiccast_zone_list_t *list)
 {
 	size_t w_zone = strlen("ZONE");
@@ -474,6 +515,24 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			args->mute_state = arg;
 			break;
 		}
+		if (args->input_cmd) {
+			if (args->input_action == INPUT_ACTION_NONE) {
+				if (strcmp(arg, "list") == 0) {
+					args->input_action = INPUT_ACTION_LIST;
+					break;
+				}
+				if (strcmp(arg, "set") == 0) {
+					args->input_action = INPUT_ACTION_SET;
+					break;
+				}
+				argp_usage(state);
+			}
+			if (args->input_action == INPUT_ACTION_SET && !args->input_id) {
+				args->input_id = arg;
+				break;
+			}
+			argp_usage(state);
+		}
 		if (args->preset_cmd) {
 			if (args->preset_action == PRESET_ACTION_NONE) {
 				if (!parse_preset_action(arg, &args->preset_action))
@@ -506,6 +565,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			if (args->preset_action != PRESET_ACTION_LIST && args->preset_num == 0)
 				argp_usage(state);
 		}
+		if (args->input_cmd && args->input_action == INPUT_ACTION_SET && !args->input_id)
+			argp_usage(state);
 		break;
 	default:
 		return ARGP_ERR_UNKNOWN;
@@ -726,6 +787,54 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 			return 1;
 		}
 		return 0;
+	}
+	if (args->input_cmd) {
+		const char *zone = command_zone(args);
+
+		if (args->input_action == INPUT_ACTION_NONE) {
+			char *input = musiccast_zone_input_get(mcc, zone);
+
+			if (!input) {
+				fprintf(stderr, "Failed to retrieve zone (%s) input!\n", zone);
+				return 1;
+			}
+			if (!args->silent)
+				printf("%s\n", input);
+			free(input);
+			return 0;
+		}
+		if (args->input_action == INPUT_ACTION_LIST) {
+			musiccast_zone_input_list_t *list = musiccast_zone_input_list(mcc, zone);
+
+			if (!list) {
+				fprintf(stderr, "Failed to retrieve zone (%s) input list!\n", zone);
+				return 1;
+			}
+			if (!args->silent)
+				input_print_list(list);
+			musiccast_zone_input_list_free(list);
+			return 0;
+		}
+		if (args->input_action == INPUT_ACTION_SET) {
+			musiccast_zone_input_list_t *list = musiccast_zone_input_list(mcc, zone);
+
+			if (!list) {
+				fprintf(stderr, "Failed to retrieve zone (%s) input list!\n", zone);
+				return 1;
+			}
+			if (!input_list_contains(list, args->input_id)) {
+				fprintf(stderr, "Unknown input '%s' for zone (%s)\n",
+					args->input_id, zone);
+				musiccast_zone_input_list_free(list);
+				return 1;
+			}
+			musiccast_zone_input_list_free(list);
+			if (!musiccast_zone_input_set(mcc, zone, args->input_id)) {
+				fprintf(stderr, "Failed to set zone (%s) input!\n", zone);
+				return 1;
+			}
+			return 0;
+		}
 	}
 	if (args->preset_cmd) {
 		const char *zone = command_zone(args);

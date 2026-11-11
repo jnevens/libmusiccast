@@ -67,6 +67,11 @@ typedef struct musiccast_zone_list_s {
 	size_t count;
 } musiccast_zone_list_t;
 
+typedef struct musiccast_zone_input_list_s {
+	char **ids;
+	size_t count;
+} musiccast_zone_input_list_t;
+
 /* Current playback (zone input + getPlayInfo for netusb / tuner / cd). */
 typedef struct musiccast_now_playing_s {
 	char *input;
@@ -112,6 +117,12 @@ bool musiccast_zone_volume_query(musiccast_conn_t *mc, const char *zone,
 bool musiccast_zone_volume_set(musiccast_conn_t *mc, const char *zone, musiccast_zone_volume_action_e action, int volume_step);
 bool musiccast_zone_mute_get(musiccast_conn_t *mc, const char *zone, bool *muted);
 bool musiccast_zone_mute(musiccast_conn_t *mc, const char *zone, bool mute);
+
+/* Zone input (current source from getStatus; choices from getFeatures input_list) */
+char *musiccast_zone_input_get(musiccast_conn_t *mc, const char *zone);
+musiccast_zone_input_list_t *musiccast_zone_input_list(musiccast_conn_t *mc, const char *zone);
+void musiccast_zone_input_list_free(musiccast_zone_input_list_t *list);
+bool musiccast_zone_input_set(musiccast_conn_t *mc, const char *zone, const char *input);
 
 /* Net/USB presets (shared across net_radio, server, etc.) */
 musiccast_netusb_preset_list_t *musiccast_netusb_preset_list(musiccast_conn_t *mc);

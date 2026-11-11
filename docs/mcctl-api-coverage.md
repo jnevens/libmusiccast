@@ -19,7 +19,7 @@ Use `[x]` / `[ ]` when updating this file.
 | Spec | Implemented in Lib | Exposed in mcctl |
 |------|-------------------|----------------|
 | Basic §4 System | 6 / 42 | 6 / 42 |
-| Basic §5 Zone | 4 / 29 | 4 / 29 (+ `zones` parses `getFeatures`) |
+| Basic §5 Zone | 5 / 29 | 5 / 29 (+ `zones` and `input list` parse `getFeatures`) |
 | Basic §6 Tuner | 0 / 15 | 0 / 15 |
 | Basic §7 Net/USB | 4 / 24 | 4 / 24 |
 | Basic §8 CD | 0 / 6 | 0 / 6 |
@@ -35,6 +35,7 @@ Use `[x]` / `[ ]` when updating this file.
 |---------|-----|-----|-------|
 | SSDP discovery | [x] | [x] | `musiccast_discover()` / `mcctl detect` |
 | Zone list from features | [x] | [x] | `musiccast_zone_list()` / `mcctl zones` |
+| Input list from features | [x] | [x] | `musiccast_zone_input_list()` / `mcctl input list` |
 | `mcctl help` | — | [x] | Usage only |
 
 ---
@@ -105,13 +106,13 @@ Use `[x]` / `[ ]` when updating this file.
 
 | API | Lib | CLI | mcctl command |
 |-----|-----|-----|----------------|
-| getStatus | [x] | [x] | `status` |
+| getStatus | [x] | [x] | `status`; current source via `input` |
 | getSoundProgramList | [ ] | [ ] | See system path above |
 | setPower | [x] | [x] | `power` |
 | setSleep | [ ] | [ ] | |
 | setVolume | [x] | [x] | `volume` |
 | setMute | [x] | [x] | `mute` |
-| setInput | [ ] | [ ] | |
+| setInput | [x] | [x] | `input set` |
 | setSoundProgram | [ ] | [ ] | |
 | set3dSurround | [ ] | [ ] | |
 | setDirect | [ ] | [ ] | |
@@ -274,7 +275,7 @@ Use `[x]` / `[ ]` when updating this file.
 ## Suggested implementation order
 
 1. **Net/USB transport** — `getPlayInfo`, `setPlayback` (+ CLI `play` / `pause` / `stop`).
-2. **Zone source** — `setInput`, `setSoundProgram`.
+2. **Zone source** — `setSoundProgram` (`setInput` is done).
 3. **Distribution** — `getDistributionInfo` first, then POST wrappers for server/client/start/stop.
 4. **Tuner** — parallel to netusb presets under `mcctl tuner …`.
 5. **System reads** — `getAdvancedFeatures`, `getNameText`, Bluetooth info (before touching Link).

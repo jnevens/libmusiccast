@@ -629,6 +629,180 @@ bool musiccast_zone_mute(musiccast_conn_t *mc, const char *zone, bool mute)
 	return rv;
 }
 
+char *musiccast_zone_input_get(musiccast_conn_t *mc, const char *zone)
+{
+	char *status;
+	char *input = NULL;
+	json_object *jobj;
+	json_object *jobj_input;
+
+	status = musiccast_zone_status(mc, zone);
+	if (!status)
+		return NULL;
+
+	jobj = json_tokener_parse(status);
+	free(status);
+	if (!jobj)
+		return NULL;
+
+	jobj_input = json_object_object_get(jobj, "input");
+	if (jobj_input && json_object_is_type(jobj_input, json_type_string))
+		input = strdup(json_object_get_string(jobj_input));
+
+	json_object_put(jobj);
+	return input;
+}
+
+static const char *zone_input_list_item_id(json_object *item)
+{
+	json_object *jobj_id;
+
+	if (!item)
+		return NULL;
+	if (json_object_is_type(item, json_type_string))
+		return json_object_get_string(item);
+	if (!json_object_is_type(item, json_type_object))
+		return NULL;
+
+	jobj_id = json_object_object_get(item, "id");
+	if (!jobj_id || !json_object_is_type(jobj_id, json_type_string))
+		return NULL;
+	return json_object_get_string(jobj_id);
+}
+
+musiccast_zone_input_list_t *musiccast_zone_input_list(musiccast_conn_t *mc, const char *zone)
+{
+	char *features;
+	json_object *jobj;
+	json_object *jobj_zones;
+	json_object *jobj_inputs = NULL;
+	musiccast_zone_input_list_t *list;
+	bool found = false;
+	size_t n = 0;
+
+	if (!mc || !zone)
+		return NULL;
+
+	features = musiccast_system_features(mc);
+	if (!features)
+		return NULL;
+
+	jobj = json_tokener_parse(features);
+	free(features);
+	if (!jobj)
+		return NULL;
+
+	jobj_zones = json_object_object_get(jobj, "zone");
+	if (!jobj_zones || !json_object_is_type(jobj_zones, json_type_array)) {
+		json_object_put(jobj);
+		return NULL;
+	}
+
+	for (size_t i = 0; i < (size_t)json_object_array_length(jobj_zones); i++) {
+		json_object *jobj_zone = json_object_array_get_idx(jobj_zones, (int)i);
+		json_object *jobj_zone_id = json_object_object_get(jobj_zone, "id");
+		const char *zone_id;
+
+		if (!jobj_zone_id || !json_object_is_type(jobj_zone_id, json_type_string))
+			continue;
+
+		zone_id = json_object_get_string(jobj_zone_id);
+		if (strcmp(zone_id, zone) != 0)
+			continue;
+
+		found = true;
+		jobj_inputs = json_object_object_get(jobj_zone, "input_list");
+		break;
+	}
+
+	if (!found || !jobj_inputs || !json_object_is_type(jobj_inputs, json_type_array)) {
+		json_object_put(jobj);
+		return NULL;
+	}
+
+	list = calloc(1, sizeof(*list));
+	if (!list) {
+		json_object_put(jobj);
+		return NULL;
+	}
+
+	list->count = (size_t)json_object_array_length(jobj_inputs);
+	if (list->count > 0) {
+		list->ids = calloc(list->count, sizeof(*list->ids));
+		if (!list->ids) {
+			free(list);
+			json_object_put(jobj);
+			return NULL;
+		}
+	}
+
+	for (size_t i = 0; i < list->count; i++) {
+		const char *id = zone_input_list_item_id(json_object_array_get_idx(jobj_inputs, (int)i));
+
+		if (!id || id[0] == '\0')
+			continue;
+
+		list->ids[n] = strdup(id);
+		if (!list->ids[n]) {
+			list->count = n;
+			musiccast_zone_input_list_free(list);
+			json_object_put(jobj);
+			return NULL;
+		}
+		n++;
+	}
+	list->count = n;
+
+	json_object_put(jobj);
+	return list;
+}
+
+void musiccast_zone_input_list_free(musiccast_zone_input_list_t *list)
+{
+	if (!list)
+		return;
+
+	for (size_t i = 0; i < list->count; i++)
+		free(list->ids[i]);
+	free(list->ids);
+	free(list);
+}
+
+/* YXC input ids are tokens such as net_radio, hdmi1, tuner. */
+static bool zone_input_id_valid(const char *input)
+{
+	if (!input || input[0] == '\0')
+		return false;
+
+	for (const char *p = input; *p != '\0'; p++) {
+		if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z')
+		    || (*p >= '0' && *p <= '9') || *p == '_')
+			continue;
+		return false;
+	}
+	return true;
+}
+
+bool musiccast_zone_input_set(musiccast_conn_t *mc, const char *zone, const char *input)
+{
+	bool rv;
+	char *response = NULL;
+	char *path = NULL;
+
+	if (!mc || !zone || !zone_input_id_valid(input))
+		return false;
+
+	if (asprintf(&path, "/YamahaExtendedControl/v1/%s/setInput?input=%s", zone, input) <= 0)
+		return false;
+
+	rv = musiccast_request(mc, path, &response);
+	if (rv && response)
+		rv = musiccast_response_ok(response);
+	free(response);
+	free(path);
+	return rv;
+}
+
 static bool musiccast_response_ok(const char *response)
 {
 	json_object *jobj;

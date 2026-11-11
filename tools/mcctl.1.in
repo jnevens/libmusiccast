@@ -133,6 +133,20 @@ Print mute state (\fIon\fR = muted, \fIoff\fR = unmuted).
 .TP
 .B mute on\fR|\fBoff\fR|\fBtoggle
 Set mute.
+.TP
+.B input
+Print the current input (\fIgetStatus\fR).
+.TP
+.B input list
+List inputs the zone can select (\fIgetFeatures\fR \fIinput_list\fR).
+.TP
+.B input set \fIINPUT\fR
+Select
+.IR INPUT
+(\fIsetInput\fR).
+.I INPUT
+must be one of the ids from
+.BR "input list" .
 .SS Net/USB presets
 Presets are shared across Net/USB sources (e.g. net radio, server).
 .TP
@@ -162,12 +176,15 @@ mcctl detect
 .EE
 .RE
 .TP
-Power and volume on the main zone:
+Power, volume, and input on the main zone:
 .RS
 .EX
 mcctl -a 192.168.1.50 power on
 mcctl -a living-room.local volume 45
 mcctl -a living-room.local volume up --step 5
+mcctl -a living-room.local input
+mcctl -a living-room.local input list
+mcctl -a living-room.local input set tuner
 .EE
 .RE
 .TP
