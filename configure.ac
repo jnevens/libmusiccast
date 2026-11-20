@@ -1,13 +1,13 @@
 # Release version (also bump debian/changelog upstream on release).
 m4_define([dc_version_major],[1])
 m4_define([dc_version_minor],[0])
-m4_define([dc_version_micro],[1])
+m4_define([dc_version_micro],[2])
 m4_define([dc_version_suffix],[])
 m4_define([dc_version],dc_version_major.dc_version_minor.dc_version_micro[]m4_ifset([dc_version_suffix],-[dc_version_suffix]))
 # Libtool versioning (ABI: current:revision:age).
-m4_define([dc_version_lt_current],[1])
+m4_define([dc_version_lt_current],[2])
 m4_define([dc_version_lt_revision],[0])
-m4_define([dc_version_lt_age],[1])
+m4_define([dc_version_lt_age],[2])
 
 AC_PREREQ([2.69])
 AC_INIT([libmusiccast],[dc_version])

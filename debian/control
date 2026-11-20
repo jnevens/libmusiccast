@@ -24,7 +24,8 @@ Description: Yamaha MusicCast device control library and mcctl CLI
  speakers and receivers over the local network (YXC HTTP API).
  .
  This package also installs mcctl, a small command-line tool for
- discovery, status queries, zone power/volume/mute, and Net/USB presets.
+ discovery, status, zone power/volume/mute/input, playback, and
+ Net/USB presets.
 
 Package: libmusiccast-dev
 Section: libdevel

@@ -1,3 +1,13 @@
+libmusiccast (1.0.2-1) unstable; urgency=medium
+
+  * Add mcctl input: show the current source, list choices, and select one
+    (getStatus, getFeatures input_list, setInput).
+  * Add playback controls for the current source: play, pause, stop, toggle,
+    next, and previous (Net/USB and CD setPlayback; tuner switchPreset).
+  * Print zone and input ids one per line, without a column header.
+
+ -- Jasper Nevens <jasper.nevens@linux.com>  Fri, 20 Nov 2026 21:19:00 +0100
+
 libmusiccast (1.0.1-1) unstable; urgency=medium
 
   * Add mcctl now-playing (YXC getPlayInfo for Net/USB, tuner, and CD).
