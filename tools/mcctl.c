@@ -522,19 +522,20 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		args->volume_step = arg;
 		break;
 	case ARGP_KEY_ARG:
-		if (parse_command(arg, args))
-			break;
-		if (args->power_cmd && !args->power_state) {
-			args->power_state = arg;
-			break;
-		}
-		if (args->volume_cmd && !args->volume_value) {
-			args->volume_value = arg;
-			break;
-		}
-		if (args->mute_cmd && !args->mute_state) {
-			args->mute_state = arg;
-			break;
+		/* Subcommand words (preset play, input set) must be consumed
+		 * before parse_command(), which also recognizes play/pause/…. */
+		if (args->preset_cmd) {
+			if (args->preset_action == PRESET_ACTION_NONE) {
+				if (!parse_preset_action(arg, &args->preset_action))
+					argp_usage(state);
+				break;
+			}
+			if (args->preset_action != PRESET_ACTION_LIST && args->preset_num == 0) {
+				if (!parse_preset_num(arg, &args->preset_num))
+					argp_usage(state);
+				break;
+			}
+			argp_usage(state);
 		}
 		if (args->input_cmd) {
 			if (args->input_action == INPUT_ACTION_NONE) {
@@ -554,19 +555,20 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 			}
 			argp_usage(state);
 		}
-		if (args->preset_cmd) {
-			if (args->preset_action == PRESET_ACTION_NONE) {
-				if (!parse_preset_action(arg, &args->preset_action))
-					argp_usage(state);
-				break;
-			}
-			if (args->preset_action != PRESET_ACTION_LIST && args->preset_num == 0) {
-				if (!parse_preset_num(arg, &args->preset_num))
-					argp_usage(state);
-				break;
-			}
-			argp_usage(state);
+		if (args->power_cmd && !args->power_state) {
+			args->power_state = arg;
+			break;
 		}
+		if (args->volume_cmd && !args->volume_value) {
+			args->volume_value = arg;
+			break;
+		}
+		if (args->mute_cmd && !args->mute_state) {
+			args->mute_state = arg;
+			break;
+		}
+		if (parse_command(arg, args))
+			break;
 		if (!args->hostname) {
 			args->hostname = arg;
 			break;
