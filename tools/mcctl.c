@@ -274,6 +274,20 @@ static const char *command_zone(const struct arguments_s *args)
 	return args->zone ? args->zone : "main";
 }
 
+/* YXC response_code 5 means the command is guarded, which these devices
+ * return while the zone is in standby. */
+static int zone_action_failed(musiccast_conn_t *mcc, const char *zone, const char *action)
+{
+	char *power = musiccast_zone_power_get(mcc, zone);
+
+	if (power && strcmp(power, "standby") == 0)
+		fprintf(stderr, "Cannot %s: zone (%s) is in standby\n", action, zone);
+	else
+		fprintf(stderr, "Failed to %s on zone (%s)!\n", action, zone);
+	free(power);
+	return 1;
+}
+
 static bool parse_volume_set_value(const char *value, musiccast_zone_volume_action_e *action,
 				   int *level_or_step)
 {
@@ -774,10 +788,8 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 				level_or_step, info.min, info.max);
 			return 1;
 		}
-		if (!musiccast_zone_volume_set(mcc, zone, action, level_or_step)) {
-			fprintf(stderr, "Failed to set zone (%s) volume!\n", zone);
-			return 1;
-		}
+		if (!musiccast_zone_volume_set(mcc, zone, action, level_or_step))
+			return zone_action_failed(mcc, zone, "set volume");
 		return 0;
 	}
 	if (args->mute_cmd) {
@@ -805,10 +817,8 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 			}
 			muted = !muted;
 		}
-		if (!musiccast_zone_mute(mcc, zone, muted)) {
-			fprintf(stderr, "Failed to set zone (%s) mute!\n", zone);
-			return 1;
-		}
+		if (!musiccast_zone_mute(mcc, zone, muted))
+			return zone_action_failed(mcc, zone, "set mute");
 		return 0;
 	}
 	if (args->input_cmd) {
@@ -852,20 +862,16 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 				return 1;
 			}
 			musiccast_zone_input_list_free(list);
-			if (!musiccast_zone_input_set(mcc, zone, args->input_id)) {
-				fprintf(stderr, "Failed to set zone (%s) input!\n", zone);
-				return 1;
-			}
+			if (!musiccast_zone_input_set(mcc, zone, args->input_id))
+				return zone_action_failed(mcc, zone, "set input");
 			return 0;
 		}
 	}
 	if (args->playback_cmd) {
 		const char *zone = command_zone(args);
 
-		if (!musiccast_playback_set(mcc, zone, args->playback_action)) {
-			fprintf(stderr, "Failed to control playback on zone (%s)!\n", zone);
-			return 1;
-		}
+		if (!musiccast_playback_set(mcc, zone, args->playback_action))
+			return zone_action_failed(mcc, zone, "control playback");
 		return 0;
 	}
 	if (args->preset_cmd) {
@@ -884,25 +890,29 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 			return 0;
 		}
 		if (args->preset_action == PRESET_ACTION_PLAY) {
+			char action[64];
+
 			if (!musiccast_netusb_preset_recall(mcc, zone, args->preset_num)) {
-				fprintf(stderr, "Failed to recall preset %d on zone (%s)!\n",
-					args->preset_num, zone);
-				return 1;
+				snprintf(action, sizeof(action), "recall preset %d", args->preset_num);
+				return zone_action_failed(mcc, zone, action);
 			}
 			return 0;
 		}
 		if (args->preset_action == PRESET_ACTION_STORE) {
+			char action[64];
+
 			if (!musiccast_netusb_preset_store(mcc, args->preset_num)) {
-				fprintf(stderr, "Failed to store current content to preset %d!\n",
-					args->preset_num);
-				return 1;
+				snprintf(action, sizeof(action), "store preset %d", args->preset_num);
+				return zone_action_failed(mcc, zone, action);
 			}
 			return 0;
 		}
 		if (args->preset_action == PRESET_ACTION_CLEAR) {
+			char action[64];
+
 			if (!musiccast_netusb_preset_clear(mcc, args->preset_num)) {
-				fprintf(stderr, "Failed to clear preset %d!\n", args->preset_num);
-				return 1;
+				snprintf(action, sizeof(action), "clear preset %d", args->preset_num);
+				return zone_action_failed(mcc, zone, action);
 			}
 			return 0;
 		}

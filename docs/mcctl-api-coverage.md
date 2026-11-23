@@ -224,7 +224,7 @@ Use `[x]` / `[ ]` when updating this file.
 
 | Item | Lib | CLI |
 |------|-----|-----|
-| Parse / surface `response_code` in errors | [ ] | [ ] | Requests succeed/fail loosely today; JSON errors not unified |
+| Parse / surface `response_code` in errors | [x] | [x] | Setters fail when the code is not 0. `mcctl` says when the zone is in standby. Raw query commands still print the JSON. |
 
 ---
 

@@ -340,6 +340,8 @@ bool musiccast_zone_power_set(musiccast_conn_t *mc, const char *zone, musiccast_
 		return false;
 
 	rv = musiccast_request(mc, path, &response);
+	if (rv)
+		rv = musiccast_response_ok(response);
 	free(response);
 	free(path);
 	return rv;
@@ -574,6 +576,8 @@ bool musiccast_zone_volume_set(musiccast_conn_t *mc, const char *zone, musiccast
 	}
 
 	rv = musiccast_request(mc, path, &response);
+	if (rv)
+		rv = musiccast_response_ok(response);
 	free(response);
 	free(path);
 	return rv;
@@ -624,6 +628,8 @@ bool musiccast_zone_mute(musiccast_conn_t *mc, const char *zone, bool mute)
 		return false;
 
 	rv = musiccast_request(mc, path, &response);
+	if (rv)
+		rv = musiccast_response_ok(response);
 	free(response);
 	free(path);
 	return rv;
