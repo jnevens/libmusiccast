@@ -1,3 +1,11 @@
+libmusiccast (1.0.3-1) unstable; urgency=medium
+
+  * Fix mcctl preset play: it was parsed as the playback command.
+  * Fail power, volume, and mute when the device returns a non-zero
+    response_code, and say when the zone is in standby.
+
+ -- Jasper Nevens <jasper.nevens@linux.com>  Mon, 23 Nov 2026 21:15:00 +0100
+
 libmusiccast (1.0.2-1) unstable; urgency=medium
 
   * Add mcctl input: show the current source, list choices, and select one
