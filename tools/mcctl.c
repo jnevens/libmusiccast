@@ -890,27 +890,27 @@ static int run_device_commands(musiccast_conn_t *mcc, struct arguments_s *args)
 			return 0;
 		}
 		if (args->preset_action == PRESET_ACTION_PLAY) {
-			char action[64];
-
 			if (!musiccast_netusb_preset_recall(mcc, zone, args->preset_num)) {
+				char action[64];
+
 				snprintf(action, sizeof(action), "recall preset %d", args->preset_num);
 				return zone_action_failed(mcc, zone, action);
 			}
 			return 0;
 		}
 		if (args->preset_action == PRESET_ACTION_STORE) {
-			char action[64];
-
 			if (!musiccast_netusb_preset_store(mcc, args->preset_num)) {
+				char action[64];
+
 				snprintf(action, sizeof(action), "store preset %d", args->preset_num);
 				return zone_action_failed(mcc, zone, action);
 			}
 			return 0;
 		}
 		if (args->preset_action == PRESET_ACTION_CLEAR) {
-			char action[64];
-
 			if (!musiccast_netusb_preset_clear(mcc, args->preset_num)) {
+				char action[64];
+
 				snprintf(action, sizeof(action), "clear preset %d", args->preset_num);
 				return zone_action_failed(mcc, zone, action);
 			}
